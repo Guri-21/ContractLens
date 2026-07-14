@@ -14,3 +14,7 @@ alembic
 transformers
 torch
 sentencepiece
+# Intelligence layer (feature/legal-intelligence)
+chromadb
+networkx
+neo4j
