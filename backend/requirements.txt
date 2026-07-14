@@ -9,3 +9,6 @@ python-docx
 anthropic
 python-dotenv
 alembic
+transformers
+torch
+sentencepiece

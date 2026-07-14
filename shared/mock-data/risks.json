@@ -1,0 +1,70 @@
+[
+  {
+    "id": "r_contra_001",
+    "clauseId": "c_msa_002",
+    "riskLevel": "high",
+    "status": "evaluated",
+    "reason": "MSA Section 3.1 requires payment within 30 days, but SOW Section 4.1 extends this to 90 days — a direct contradiction that creates legal ambiguity over which term governs.",
+    "playbookRuleViolated": "Payment terms must not exceed 30 days per Standard Playbook v2.1, Rule 4.3",
+    "evidence": [
+      {
+        "documentName": "MSA_TechCorp_v2.pdf",
+        "page": 3,
+        "section": "3.1",
+        "quote": "All invoices shall be settled within 30 (thirty) days from the date of receipt of invoice."
+      },
+      {
+        "documentName": "SOW_Phase1_DataPlatform.pdf",
+        "page": 4,
+        "section": "4.1",
+        "quote": "Client shall remit payment within 90 (ninety) days of invoice date."
+      }
+    ],
+    "missingDocuments": null,
+    "redline": {
+      "originalText": "Client shall remit payment within 90 (ninety) days of invoice date.",
+      "suggestedText": "Client shall remit payment within 30 (thirty) days of invoice date, consistent with Section 3.1 of the Master Services Agreement.",
+      "diffHtml": null
+    }
+  },
+  {
+    "id": "r_refuse_001",
+    "clauseId": "c_sow_003",
+    "riskLevel": "high",
+    "status": "not_evaluated",
+    "reason": "Cannot evaluate: clause references Exhibit B which was not uploaded. AI will not guess the content of missing documents.",
+    "playbookRuleViolated": null,
+    "evidence": [
+      {
+        "documentName": "SOW_Phase1_DataPlatform.pdf",
+        "page": 6,
+        "section": "6",
+        "quote": "In the event of SLA breaches, service credit penalties shall apply as specified in Exhibit B."
+      }
+    ],
+    "missingDocuments": ["Exhibit B"],
+    "redline": null
+  },
+  {
+    "id": "r_playbook_001",
+    "clauseId": "c_sow_002",
+    "riskLevel": "medium",
+    "status": "evaluated",
+    "reason": "SOW payment terms of 90 days violate the standard playbook requirement that payment terms must not exceed 30 days. This exposes the vendor to extended cash flow risk.",
+    "playbookRuleViolated": "Payment terms must not exceed 30 days per Standard Playbook v2.1, Rule 4.3",
+    "evidence": [
+      {
+        "documentName": "SOW_Phase1_DataPlatform.pdf",
+        "page": 4,
+        "section": "4.1",
+        "quote": "Client shall remit payment within 90 (ninety) days of invoice date."
+      }
+    ],
+    "missingDocuments": null,
+    "redline": {
+      "originalText": "Client shall remit payment within 90 (ninety) days of invoice date.",
+      "suggestedText": "Client shall remit payment within 30 (thirty) days of invoice date.",
+      "diffHtml": null
+    }
+  }
+]
