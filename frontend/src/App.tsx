@@ -8,7 +8,6 @@ import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
 import { Sandbox } from './Sandbox';
 import { fetchBackendDocuments } from './api/documents';
-import { fetchBackendAnalyze } from './api/analyze';
 import {
   accents,
   playbookVersions as initialPlaybookVersions,
@@ -51,52 +50,36 @@ export default function App() {
   useEffect(() => {
     const loadBackendData = async () => {
       try {
-        const [docsData, analyzeData] = await Promise.all([
-          fetchBackendDocuments(),
-          fetchBackendAnalyze()
-        ]);
-
-        // Group clauses by documentId to construct contracts list
-        const documentMap: Record<string, { id: string; name: string; type: string; clauses: any[] }> = {};
+        const docsData = await fetchBackendDocuments();
         
-        if (Array.isArray(docsData)) {
-          docsData.forEach((clause: any) => {
-            if (!documentMap[clause.documentId]) {
-              documentMap[clause.documentId] = {
-                id: clause.documentId,
-                name: clause.documentName || 'Unknown Document',
-                type: clause.documentType || 'MSA',
-                clauses: []
-              };
-            }
-            documentMap[clause.documentId].clauses.push(clause);
-          });
-        }
+        if (!Array.isArray(docsData)) return;
 
-        const backendContracts: Contract[] = Object.values(documentMap).map((doc) => {
-          const docClausesIds = doc.clauses.map((c) => c.id);
-          const findings = Array.isArray(analyzeData) 
-            ? analyzeData.filter((r: any) => docClausesIds.includes(r.clauseId)) 
-            : [];
+        const backendContracts: Contract[] = docsData.map((doc: any) => {
+          // Extract risks from nested clauses array
+          const clauses = doc.clauses || [];
+          const findings = clauses.flatMap((c: any) => c.risks || []);
           
           let level: 'low' | 'medium' | 'high' | 'critical' | null = null;
           let score = null;
+          
           if (findings.length > 0) {
-            level = findings[0].riskLevel as any;
+            // Backend Prisma uses snake_case: risk_level
+            level = findings[0].risk_level as any;
             score = level === 'critical' ? 88 : level === 'high' ? 68 : level === 'medium' ? 48 : 28;
           }
 
+          // Use real data from backend document model where possible
           return {
             id: doc.id,
-            name: doc.name,
+            name: doc.name || 'Unknown Document',
             client: 'Backend Client',
             dept: 'Legal',
             country: 'United States',
-            type: doc.type,
+            type: doc.document_type || 'MSA',
             uploadedBy: 'Backend API',
             date: 'Jul 14, 2026',
             iso: '2026-07-14',
-            status: findings.length > 0 && findings[0].status === 'evaluated' ? 'reviewed' : 'processing',
+            status: doc.status === 'processed' ? 'reviewed' : (doc.status || 'processing'),
             score: score,
             level: level,
             reviewer: 'System',

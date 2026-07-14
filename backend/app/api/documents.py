@@ -48,8 +48,15 @@ async def upload_document(
 
 @router.get("/")
 async def list_documents(db: Prisma = Depends(get_db), current_user = Depends(get_current_user)):
-    return await db.document.find_many()
-
+    return await db.document.find_many(
+        include={
+            "clauses": {
+                "include": {
+                    "risks": True
+                }
+            }
+        }
+    )
 @router.post("/{document_id}/analyze")
 async def analyze_document(
     document_id: str, 
