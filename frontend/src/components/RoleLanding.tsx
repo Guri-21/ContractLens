@@ -1,6 +1,6 @@
 
 interface RoleLandingProps {
-  onSelectRole: (role: 'admin' | 'compliance') => void;
+  onSelectRole: (role: 'admin' | 'compliance' | 'reviewer') => void;
   accentColor: string;
 }
 
@@ -30,14 +30,14 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
     },
     {
       key: 'reviewer' as const,
-      tag: 'Separate',
+      tag: 'Review',
       name: 'Legal Reviewer',
-      desc: 'Clause viewer, redlines and comparison — a different workspace, out of this build.',
-      cta: 'Managed separately',
-      disabled: true,
-      tagColor: '#475569',
-      hoverClass: 'opacity-55 cursor-not-allowed',
-      style: { border: '1px dashed #334155', background: '#111827' }
+      desc: 'Clause viewer, redlines and comparison — analyze and edit specific contract terms.',
+      cta: 'Enter workspace →',
+      disabled: false,
+      tagColor: '#38BDF8',
+      hoverClass: 'hover:border-[#38BDF8] hover:-translate-y-0.5',
+      style: { border: '1px solid #334155' }
     }
   ];
 

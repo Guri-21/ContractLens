@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
 import AuditTrail from './pages/AuditTrail';
 import Modal from './components/Modal';
+import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
 import { fetchBackendDocuments } from './api/documents';
 import { fetchBackendAnalyze } from './api/analyze';
 import {
@@ -25,7 +26,7 @@ import {
 } from './mock/data';
 
 export default function App() {
-  const [role, setRole] = useState<'admin' | 'compliance' | null>(null);
+  const [role, setRole] = useState<'admin' | 'compliance' | 'reviewer' | null>(null);
   const [nav, setNav] = useState<string>('contracts');
   const [accentKey, setAccentKey] = useState<'gold' | 'crimson'>('gold');
 
@@ -205,16 +206,31 @@ export default function App() {
     (c) => c.status === 'queued' || c.status === 'processing'
   ).length;
 
+  // Handle Reviewer Workspace layout
+  if (role === 'reviewer') {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setRole(null)}
+          className="absolute top-4 left-4 bg-slate-900/80 hover:bg-slate-950 text-white text-xs font-semibold px-3 py-1.5 rounded shadow-md z-[100] transition-colors"
+        >
+          ← Switch Workspace
+        </button>
+        <ReviewerWorkspace />
+      </div>
+    );
+  }
+
   return (
     <>
       {role === null ? (
         <RoleLanding
-          onSelectRole={(r) => setRole(r)}
+          onSelectRole={(r) => setRole(r as any)}
           accentColor={activeAccent.color}
         />
       ) : (
         <AppShell
-          role={role}
+          role={role as 'admin' | 'compliance'}
           currentNav={nav}
           onNavigate={(n) => setNav(n)}
           accentKey={accentKey}
