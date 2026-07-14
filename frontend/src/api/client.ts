@@ -1,2 +1,1 @@
-﻿// TODO: Person 4 - api client
-export {};
+export const API_BASE_URL = 'http://localhost:8000';
