@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-backend = Path(r"d:\Projects\ContractLens\backend")
+backend = Path(__file__).parent.resolve()
 
 def create_file(path, content):
     p = backend / path
