@@ -14,12 +14,14 @@ async def seed():
     db = Prisma()
     await db.connect()
     
-    # Check if seeded
-    existing_role = await db.role.find_first()
-    if existing_role:
-        print("Database already seeded.")
-        await db.disconnect()
-        return
+    print("Clearing database...")
+    await db.riskfinding.delete_many()
+    await db.clause.delete_many()
+    await db.document.delete_many()
+    await db.playbookrule.delete_many()
+    await db.countrycompliancerule.delete_many()
+    await db.user.delete_many()
+    await db.role.delete_many()
         
     print("Seeding database...")
     
@@ -81,8 +83,7 @@ async def seed():
         "text": "Customer shall pay all undisputed invoices within sixty (60) days of receipt.",
         "clause_type": "Payment",
         "references": json.dumps([]),
-        "overrides": json.dumps([]),
-        "table_data": None
+        "overrides": json.dumps([])
     })
     
     # Risk
