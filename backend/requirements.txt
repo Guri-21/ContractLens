@@ -9,3 +9,7 @@ python-docx
 anthropic
 python-dotenv
 alembic
+# Intelligence layer (feature/legal-intelligence)
+chromadb
+networkx
+neo4j
