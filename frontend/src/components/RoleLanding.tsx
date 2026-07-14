@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
 interface RoleLandingProps {
-  onSelectRole: (role: 'admin' | 'compliance' | 'reviewer' | 'sandbox') => void;
+  onSelectRole: (role: 'admin' | 'legal') => void;
   accentColor: string;
 }
 
 export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingProps) {
-  const [loginRole, setLoginRole] = useState<'admin' | 'compliance' | 'reviewer' | null>(null);
+  const [loginRole, setLoginRole] = useState<'admin' | 'legal' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,58 +25,30 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       style: { border: '1px solid #334155' }
     },
     {
-      key: 'compliance' as const,
-      tag: 'Monitor',
-      name: 'Compliance Officer',
-      desc: 'Aggregate risk posture, analytics, and PDF reporting. No individual contract review.',
-      cta: 'Enter workspace →',
-      disabled: false,
-      tagColor: accentColor === '#8B2635' ? '#8B2635' : '#C9A24B',
-      hoverClass: 'hover:border-[#C9A24B] hover:-translate-y-0.5',
-      style: { border: '1px solid #334155' }
-    },
-    {
-      key: 'reviewer' as const,
-      tag: 'Review',
-      name: 'Legal Reviewer',
-      desc: 'Clause viewer, redlines and comparison — analyze and edit specific contract terms.',
+      key: 'legal' as const,
+      tag: 'Review & Monitor',
+      name: 'Legal & Compliance',
+      desc: 'Aggregate risk posture, analytics, plus individual contract review and redlining.',
       cta: 'Enter workspace →',
       disabled: false,
       tagColor: '#38BDF8',
       hoverClass: 'hover:border-[#38BDF8] hover:-translate-y-0.5',
       style: { border: '1px solid #334155' }
-    },
-    {
-      key: 'sandbox' as const,
-      tag: 'Demo',
-      name: 'Component Sandbox',
-      desc: 'Cross-cutting components: version comparison, dependency graphs, and PDF viewers.',
-      cta: 'Enter sandbox →',
-      disabled: false,
-      tagColor: '#A855F7',
-      hoverClass: 'hover:border-[#A855F7] hover:-translate-y-0.5',
-      style: { border: '1px solid #334155' }
     }
   ];
 
-  // Helper mappings for default credentials
   const defaultCredentials: Record<string, { u: string; p: string; label: string }> = {
     admin: { u: 'admin@contractlens.com', p: 'admin123', label: 'Admin' },
-    compliance: { u: 'compliance@contractlens.com', p: 'compliance123', label: 'Compliance Officer' },
-    reviewer: { u: 'reviewer@contractlens.com', p: 'reviewer123', label: 'Legal Reviewer' }
+    legal: { u: 'compliance@contractlens.com', p: 'compliance123', label: 'Legal & Compliance' }
   };
 
   const handleTileClick = (tile: typeof roleTiles[number]) => {
-    if (tile.key === 'sandbox') {
-      onSelectRole('sandbox');
-    } else {
-      setError('');
-      setLoginRole(tile.key);
-      const defaults = defaultCredentials[tile.key];
-      if (defaults) {
-        setEmail(defaults.u);
-        setPassword(defaults.p);
-      }
+    setError('');
+    setLoginRole(tile.key);
+    const defaults = defaultCredentials[tile.key];
+    if (defaults) {
+      setEmail(defaults.u);
+      setPassword(defaults.p);
     }
   };
 
@@ -107,15 +79,13 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
 
       const data = await response.json();
       
-      // Enforce role checks in frontend to ensure user enters the chosen workspace mapping
       const mappedRole = data.role.toLowerCase(); // e.g. "admin", "legal reviewer", "compliance officer"
       let expectedRoleKey = '';
       if (mappedRole === 'admin') expectedRoleKey = 'admin';
-      else if (mappedRole === 'compliance officer') expectedRoleKey = 'compliance';
-      else if (mappedRole === 'legal reviewer') expectedRoleKey = 'reviewer';
+      else expectedRoleKey = 'legal'; // treat both legal reviewer and compliance officer as 'legal'
 
       if (expectedRoleKey !== loginRole) {
-        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${loginRole === 'admin' ? 'Admin' : loginRole === 'compliance' ? 'Compliance' : 'Reviewer'} workspace.`);
+        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${loginRole === 'admin' ? 'Admin' : 'Legal & Compliance'} workspace.`);
       }
 
       // Store JWT token details in localStorage
@@ -193,7 +163,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
               </button>
             </div>
             <h3 className="font-serif text-xl text-[#F8FAFC] mb-1.5">
-              Enter {loginRole === 'admin' ? 'Admin' : loginRole === 'compliance' ? 'Compliance' : 'Reviewer'} Workspace
+              Enter {loginRole === 'admin' ? 'Admin' : 'Legal & Compliance'} Workspace
             </h3>
             <p className="text-[#94A3B8] text-xs leading-normal mb-5">
               Sign in with your credentials to access this protected area.

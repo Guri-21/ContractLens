@@ -167,58 +167,68 @@ export default function Admin({
             <div className="p-3.5 px-5 border-b border-[#E2E8F0] font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase">
               Version history
             </div>
-            <table className="w-full border-collapse text-[13.5px]">
-              <thead>
-                <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
-                  <th className="p-[11px] px-5 font-semibold">Version</th>
-                  <th className="p-[11px] px-5 font-semibold">Uploaded</th>
-                  <th className="p-[11px] px-5 font-semibold">By</th>
-                  <th className="p-[11px] px-5 font-semibold">Documents</th>
-                  <th className="p-[11px] px-5 font-semibold">Status</th>
-                  <th className="p-[11px] px-5 font-semibold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {playbookVersions.map((p) => {
-                  const isActive = p.status === 'active';
-                  return (
-                    <tr key={p.id} className="border-t border-[#F1F5F9] first:border-t-0">
-                      <td className="p-3.5 px-5 font-semibold text-[#0F172A]">
-                        Playbook {p.version}
-                      </td>
-                      <td className="p-3.5 px-5 text-[#475569]">{p.date}</td>
-                      <td className="p-3.5 px-5 text-[#475569]">{p.by}</td>
-                      <td className="p-3.5 px-5 text-[#475569]">{p.docs} docs</td>
-                      <td className="p-3.5 px-5">
-                        <span
-                          style={
-                            isActive
-                              ? pillStyle('#E9F1EC', '#3F6B52')
-                              : pillStyle('#F1F5F9', '#64748B')
-                          }
-                        >
-                          {isActive ? 'Active' : 'Archived'}
-                        </span>
-                      </td>
-                      <td className="p-3.5 px-5 text-right">
-                        {isActive ? (
-                          <span className="text-[#94A3B8] text-xs font-semibold px-3 py-1.5 inline-block">
-                            In use
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => onSetActivePlaybook(p.id)}
-                            className="bg-transparent border border-accent hover:bg-accent-soft text-accent-text text-xs font-semibold px-3 py-1.5 rounded cursor-pointer transition-colors"
+            {playbookVersions.length === 0 ? (
+              <div className="bg-white border-t border-[#E2E8F0] p-10 flex flex-col items-center justify-center text-center">
+                <div className="text-4xl mb-3 opacity-50">📚</div>
+                <h3 className="text-lg font-medium text-slate-800 mb-1">No playbooks found</h3>
+                <p className="text-slate-500 text-sm max-w-sm">
+                  Upload a playbook to establish the rules your contracts will be evaluated against.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-[13.5px]">
+                <thead>
+                  <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
+                    <th className="p-[11px] px-5 font-semibold">Version</th>
+                    <th className="p-[11px] px-5 font-semibold">Uploaded</th>
+                    <th className="p-[11px] px-5 font-semibold">By</th>
+                    <th className="p-[11px] px-5 font-semibold">Documents</th>
+                    <th className="p-[11px] px-5 font-semibold">Status</th>
+                    <th className="p-[11px] px-5 font-semibold text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playbookVersions.map((p) => {
+                    const isActive = p.status === 'active';
+                    return (
+                      <tr key={p.id} className="border-t border-[#F1F5F9] first:border-t-0">
+                        <td className="p-3.5 px-5 font-semibold text-[#0F172A]">
+                          Playbook {p.version}
+                        </td>
+                        <td className="p-3.5 px-5 text-[#475569]">{p.date}</td>
+                        <td className="p-3.5 px-5 text-[#475569]">{p.by}</td>
+                        <td className="p-3.5 px-5 text-[#475569]">{p.docs} docs</td>
+                        <td className="p-3.5 px-5">
+                          <span
+                            style={
+                              isActive
+                                ? pillStyle('#E9F1EC', '#3F6B52')
+                                : pillStyle('#F1F5F9', '#64748B')
+                            }
                           >
-                            Set active
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            {isActive ? 'Active' : 'Archived'}
+                          </span>
+                        </td>
+                        <td className="p-3.5 px-5 text-right">
+                          {isActive ? (
+                            <span className="text-[#94A3B8] text-xs font-semibold px-3 py-1.5 inline-block">
+                              In use
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => onSetActivePlaybook(p.id)}
+                              className="bg-transparent border border-accent hover:bg-accent-soft text-accent-text text-xs font-semibold px-3 py-1.5 rounded cursor-pointer transition-colors"
+                            >
+                              Set active
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -282,32 +292,42 @@ export default function Admin({
             <div className="p-3.5 px-5 border-b border-[#E2E8F0] font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase">
               Rule sets • United States
             </div>
-            <table className="w-full border-collapse text-[13.5px]">
-              <thead>
-                <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
-                  <th className="p-[11px] px-5 font-semibold">Rule set</th>
-                  <th className="p-[11px] px-5 font-semibold">Category</th>
-                  <th className="p-[11px] px-5 font-semibold">Rules</th>
-                  <th className="p-[11px] px-5 font-semibold">Updated</th>
-                  <th className="p-[11px] px-5 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ruleSets.map((r) => (
-                  <tr key={r.name} className="border-t border-[#F1F5F9] first:border-t-0">
-                    <td className="p-3.5 px-5 font-semibold text-[#0F172A]">{r.name}</td>
-                    <td className="p-3.5 px-5 text-[#475569]">{r.category}</td>
-                    <td className="p-3.5 px-5 text-[#475569]">{r.rules}</td>
-                    <td className="p-3.5 px-5 text-[#475569]">{r.updated}</td>
-                    <td className="p-3.5 px-5">
-                      <span className="bg-[#E9F1EC] text-[#3F6B52] text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">
-                        Enforced
-                      </span>
-                    </td>
+            {ruleSets.length === 0 ? (
+              <div className="bg-white border-t border-[#E2E8F0] p-10 flex flex-col items-center justify-center text-center">
+                <div className="text-4xl mb-3 opacity-50">⚖️</div>
+                <h3 className="text-lg font-medium text-slate-800 mb-1">No rule sets found</h3>
+                <p className="text-slate-500 text-sm max-w-sm">
+                  Add compliance rules to evaluate contracts against jurisdictional regulations.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-[13.5px]">
+                <thead>
+                  <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
+                    <th className="p-[11px] px-5 font-semibold">Rule set</th>
+                    <th className="p-[11px] px-5 font-semibold">Category</th>
+                    <th className="p-[11px] px-5 font-semibold">Rules</th>
+                    <th className="p-[11px] px-5 font-semibold">Updated</th>
+                    <th className="p-[11px] px-5 font-semibold">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {ruleSets.map((r) => (
+                    <tr key={r.name} className="border-t border-[#F1F5F9] first:border-t-0">
+                      <td className="p-3.5 px-5 font-semibold text-[#0F172A]">{r.name}</td>
+                      <td className="p-3.5 px-5 text-[#475569]">{r.category}</td>
+                      <td className="p-3.5 px-5 text-[#475569]">{r.rules}</td>
+                      <td className="p-3.5 px-5 text-[#475569]">{r.updated}</td>
+                      <td className="p-3.5 px-5">
+                        <span className="bg-[#E9F1EC] text-[#3F6B52] text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">
+                          Enforced
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -337,61 +357,71 @@ export default function Admin({
 
           {/* Users Table */}
           <div className="bg-white border border-[#E2E8F0] rounded overflow-hidden">
-            <table className="w-full border-collapse text-[13.5px]">
-              <thead>
-                <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
-                  <th className="p-3 px-5 font-semibold">Name</th>
-                  <th className="p-3 px-5 font-semibold">Email</th>
-                  <th className="p-3 px-5 font-semibold">Role</th>
-                  <th className="p-3 px-5 font-semibold">Status</th>
-                  <th className="p-3 px-5 font-semibold">Last active</th>
-                  <th className="p-3 px-5 font-semibold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersList.map((u) => {
-                  const rm = roleMeta[u.role] || { soft: '#F1F5F9', color: '#334155' };
-                  const stColor =
-                    u.status === 'Active'
-                      ? '#3F6B52'
-                      : u.status === 'Invited'
-                      ? '#9C7A3C'
-                      : '#94A3B8';
-                  return (
-                    <tr key={u.id} className="border-t border-[#F1F5F9] first:border-t-0">
-                      <td className="p-3 px-5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-full bg-[#F1F5F9] text-[#334155] flex items-center justify-center font-bold text-[11px] flex-none">
-                            {initials(u.name)}
+            {usersList.length === 0 ? (
+              <div className="bg-white border-t border-[#E2E8F0] p-10 flex flex-col items-center justify-center text-center">
+                <div className="text-4xl mb-3 opacity-50">👥</div>
+                <h3 className="text-lg font-medium text-slate-800 mb-1">No users found</h3>
+                <p className="text-slate-500 text-sm max-w-sm">
+                  Add team members and assign roles to give them access to the platform.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-[13.5px]">
+                <thead>
+                  <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
+                    <th className="p-3 px-5 font-semibold">Name</th>
+                    <th className="p-3 px-5 font-semibold">Email</th>
+                    <th className="p-3 px-5 font-semibold">Role</th>
+                    <th className="p-3 px-5 font-semibold">Status</th>
+                    <th className="p-3 px-5 font-semibold">Last active</th>
+                    <th className="p-3 px-5 font-semibold text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersList.map((u) => {
+                    const rm = roleMeta[u.role] || { soft: '#F1F5F9', color: '#334155' };
+                    const stColor =
+                      u.status === 'Active'
+                        ? '#3F6B52'
+                        : u.status === 'Invited'
+                        ? '#9C7A3C'
+                        : '#94A3B8';
+                    return (
+                      <tr key={u.id} className="border-t border-[#F1F5F9] first:border-t-0">
+                        <td className="p-3 px-5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-full bg-[#F1F5F9] text-[#334155] flex items-center justify-center font-bold text-[11px] flex-none">
+                              {initials(u.name)}
+                            </span>
+                            <span className="font-semibold text-[#0F172A]">{u.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 px-5 text-[#475569] font-mono text-xs truncate max-w-[200px]">
+                          {u.email}
+                        </td>
+                        <td className="p-3 px-5">
+                          <span style={pillStyle(rm.soft, rm.color)}>{u.role}</span>
+                        </td>
+                        <td className="p-3 px-5">
+                          <span style={{ color: stColor, fontSize: '12.5px', fontWeight: 600 }}>
+                            ● {u.status}
                           </span>
-                          <span className="font-semibold text-[#0F172A]">{u.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 px-5 text-[#475569] font-mono text-xs truncate max-w-[200px]">
-                        {u.email}
-                      </td>
-                      <td className="p-3 px-5">
-                        <span style={pillStyle(rm.soft, rm.color)}>{u.role}</span>
-                      </td>
-                      <td className="p-3 px-5">
-                        <span style={{ color: stColor, fontSize: '12.5px', fontWeight: 600 }}>
-                          ● {u.status}
-                        </span>
-                      </td>
-                      <td className="p-3 px-5 text-[#64748B] whitespace-nowrap">{u.lastActive}</td>
-                      <td className="p-3 px-5 text-right">
-                        <button
-                          onClick={() => onEditUser(u)}
-                          className="bg-transparent border border-[#E2E8F0] hover:border-accent text-[#334155] hover:text-accent-text text-xs font-semibold px-3 py-1.5 rounded cursor-pointer transition-all"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="p-3 px-5 text-[#64748B] whitespace-nowrap">{u.lastActive}</td>
+                        <td className="p-3 px-5 text-right">
+                          <button
+                            onClick={() => onEditUser(u)}
+                            className="bg-transparent border border-[#E2E8F0] hover:border-accent text-[#334155] hover:text-accent-text text-xs font-semibold px-3 py-1.5 rounded cursor-pointer transition-all"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -446,70 +476,82 @@ export default function Admin({
 
           {/* Contracts Table */}
           <div className="bg-white border border-[#E2E8F0] rounded overflow-hidden">
-            <table className="w-full border-collapse text-xs md:text-[13px]">
-              <thead>
-                <tr className="text-left bg-[#FCFCFD] border-b border-[#E2E8F0]">
-                  {tableCols.map((col) => {
-                    const isSorted = sortKey === col.k;
-                    return (
-                      <th key={col.k} className="p-3 px-4 font-semibold whitespace-nowrap">
-                        <button
-                          onClick={() => onSetSort(col.k)}
-                          className="bg-transparent border-0 p-0 text-[#64748B] hover:text-[#0F172A] font-semibold text-[11px] tracking-[0.06em] uppercase flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          {col.label}
-                          {isSorted && (
-                            <span className="text-accent">
-                              {sortDir === 'asc' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </button>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedContracts.map((c) => {
-                  const sm = statusMeta[c.status];
-                  const rm = c.level ? riskMeta[c.level] : null;
-                  return (
-                    <tr key={c.id} className="border-t border-[#F1F5F9] first:border-t-0 hover:bg-[#FAFAFB]">
-                      <td className="p-3 px-4">
-                        <div className="font-semibold text-[#0F172A] leading-tight">{c.name}</div>
-                        <div className="font-mono text-[11px] text-[#94A3B8] mt-0.5">{c.id}</div>
-                      </td>
-                      <td className="p-3 px-4 text-[#475569]">{c.client}</td>
-                      <td className="p-3 px-4">
-                        <span className="font-mono text-[11px] bg-[#F1F5F9] text-[#475569] px-1.75 py-0.75 rounded">
-                          {c.type}
-                        </span>
-                      </td>
-                      <td className="p-3 px-4 text-[#475569]">{c.uploadedBy}</td>
-                      <td className="p-3 px-4 text-[#64748B] whitespace-nowrap">{c.date}</td>
-                      <td className="p-3 px-4">
-                        <span style={pillStyle(sm.soft, sm.color)}>
-                          ● {sm.label}
-                        </span>
-                      </td>
-                      <td className="p-3 px-4">
-                        {rm ? (
-                          <span style={pillStyle(rm.soft, rm.text)}>
-                            {rm.label} • {c.score}
-                          </span>
-                        ) : (
-                          <span className="text-[#94A3B8] text-xs">Not scored</span>
-                        )}
-                      </td>
-                      <td className="p-3 px-4 text-[#475569]">{c.reviewer}</td>
+            {sortedContracts.length === 0 ? (
+              <div className="bg-white border-t border-[#E2E8F0] p-10 flex flex-col items-center justify-center text-center">
+                <div className="text-4xl mb-3 opacity-50">📄</div>
+                <h3 className="text-lg font-medium text-slate-800 mb-1">No contracts found</h3>
+                <p className="text-slate-500 text-sm max-w-sm">
+                  There are no contracts matching your current filters. Adjust your search or wait for new uploads.
+                </p>
+              </div>
+            ) : (
+              <>
+                <table className="w-full border-collapse text-xs md:text-[13px]">
+                  <thead>
+                    <tr className="text-left bg-[#FCFCFD] border-b border-[#E2E8F0]">
+                      {tableCols.map((col) => {
+                        const isSorted = sortKey === col.k;
+                        return (
+                          <th key={col.k} className="p-3 px-4 font-semibold whitespace-nowrap">
+                            <button
+                              onClick={() => onSetSort(col.k)}
+                              className="bg-transparent border-0 p-0 text-[#64748B] hover:text-[#0F172A] font-semibold text-[11px] tracking-[0.06em] uppercase flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              {col.label}
+                              {isSorted && (
+                                <span className="text-accent">
+                                  {sortDir === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </button>
+                          </th>
+                        );
+                      })}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="p-3 px-4 border-t border-[#F1F5F9] text-xs text-[#94A3B8]">
-              {sortedContracts.length} of {contracts.length} contracts
-            </div>
+                  </thead>
+                  <tbody>
+                    {sortedContracts.map((c) => {
+                      const sm = statusMeta[c.status];
+                      const rm = c.level ? riskMeta[c.level] : null;
+                      return (
+                        <tr key={c.id} className="border-t border-[#F1F5F9] first:border-t-0 hover:bg-[#FAFAFB]">
+                          <td className="p-3 px-4">
+                            <div className="font-semibold text-[#0F172A] leading-tight">{c.name}</div>
+                            <div className="font-mono text-[11px] text-[#94A3B8] mt-0.5">{c.id}</div>
+                          </td>
+                          <td className="p-3 px-4 text-[#475569]">{c.client}</td>
+                          <td className="p-3 px-4">
+                            <span className="font-mono text-[11px] bg-[#F1F5F9] text-[#475569] px-1.75 py-0.75 rounded">
+                              {c.type}
+                            </span>
+                          </td>
+                          <td className="p-3 px-4 text-[#475569]">{c.uploadedBy}</td>
+                          <td className="p-3 px-4 text-[#64748B] whitespace-nowrap">{c.date}</td>
+                          <td className="p-3 px-4">
+                            <span style={pillStyle(sm.soft, sm.color)}>
+                              ● {sm.label}
+                            </span>
+                          </td>
+                          <td className="p-3 px-4">
+                            {rm ? (
+                              <span style={pillStyle(rm.soft, rm.text)}>
+                                {rm.label} • {c.score}
+                              </span>
+                            ) : (
+                              <span className="text-[#94A3B8] text-xs">Not scored</span>
+                            )}
+                          </td>
+                          <td className="p-3 px-4 text-[#475569]">{c.reviewer}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <div className="p-3 px-4 border-t border-[#F1F5F9] text-xs text-[#94A3B8]">
+                  {sortedContracts.length} of {contracts.length} contracts
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

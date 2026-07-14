@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { UploadCloud, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { uploadDocument } from '../../api/documents';
+import { fetchBackendAnalyze } from '../../api/analyze';
 
 type UploadStatus = 'idle' | 'uploading' | 'parsing' | 'analyzing' | 'done';
 
 interface UploadFlowProps {
-  onComplete: () => void;
+  onComplete: (data: { clauses: any[], risks: any[] }) => void;
 }
 
 export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
@@ -21,18 +23,28 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
     }
   };
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
+    if (files.length === 0) return;
     setStatus('uploading');
-    setTimeout(() => {
-      setStatus('parsing');
-      setTimeout(() => {
-        setStatus('analyzing');
-        setTimeout(() => {
-          setStatus('done');
-          onComplete();
-        }, 1500);
-      }, 1500);
-    }, 1000);
+    
+    try {
+      // 1. Upload files
+      const documentIds: string[] = [];
+      for (const file of files) {
+        const res = await uploadDocument(file);
+        documentIds.push(res.documentId);
+      }
+      
+      setStatus('analyzing');
+      // 2. Trigger analysis
+      const data = await fetchBackendAnalyze(documentIds, playbook, country);
+      
+      setStatus('done');
+      onComplete(data);
+    } catch (err) {
+      console.error(err);
+      setStatus('idle');
+    }
   };
 
   return (

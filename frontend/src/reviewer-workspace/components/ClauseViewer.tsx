@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ShieldX, CheckCircle, FileText, FileWarning, ExternalLink } from 'lucide-react';
 
-import { mockClauses, mockRiskFindings } from '../mocks/data';
+import { ClauseDTO, RiskFindingDTO } from '../types';
 import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';
 import { CrossDocumentComparison } from './CrossDocumentComparison';
 
-export const ClauseViewer: React.FC = () => {
-  const [selectedClauseId, setSelectedClauseId] = useState<string | null>(mockClauses[0].id);
+interface ClauseViewerProps {
+  clauses: ClauseDTO[];
+  risks: RiskFindingDTO[];
+}
+
+export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks }) => {
+  const [selectedClauseId, setSelectedClauseId] = useState<string | null>(clauses.length > 0 ? clauses[0].id : null);
   const [editingClauseId, setEditingClauseId] = useState<string | null>(null);
 
-  const selectedClause = mockClauses.find(c => c.id === selectedClauseId);
-  const clauseRisks = selectedClause ? mockRiskFindings.filter(r => r.clauseId === selectedClause.id) : [];
+  const selectedClause = clauses.find(c => c.id === selectedClauseId);
+  const clauseRisks = selectedClause ? risks.filter(r => r.clauseId === selectedClause.id) : [];
 
   const getRiskBadge = (clauseId: string) => {
-    const risks = mockRiskFindings.filter(r => r.clauseId === clauseId);
-    if (risks.length === 0) {
+    const clauseRisksForBadge = risks.filter(r => r.clauseId === clauseId);
+    if (clauseRisksForBadge.length === 0) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
           <CheckCircle className="w-3 h-3 mr-1" /> OK
@@ -24,7 +29,7 @@ export const ClauseViewer: React.FC = () => {
     }
     
     // Check for not_evaluated first
-    const notEvaluated = risks.find(r => r.status === 'not_evaluated');
+    const notEvaluated = clauseRisksForBadge.find(r => r.status === 'not_evaluated');
     if (notEvaluated) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300 border-dashed" title="AI refused to evaluate due to missing context">
@@ -58,10 +63,10 @@ export const ClauseViewer: React.FC = () => {
       <div className="w-1/3 border-r border-gray-200 flex flex-col h-full overflow-hidden bg-gray-50/50">
         <div className="p-4 border-b border-gray-200 bg-white">
           <h2 className="text-lg font-semibold text-gray-800">Document Clauses</h2>
-          <p className="text-sm text-gray-500">{mockClauses.length} clauses extracted</p>
+          <p className="text-sm text-gray-500">{clauses.length} clauses extracted</p>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {mockClauses.map((clause) => (
+          {clauses.map((clause) => (
             <div
               key={clause.id}
               onClick={() => setSelectedClauseId(clause.id)}
@@ -109,7 +114,7 @@ export const ClauseViewer: React.FC = () => {
               <InlineClauseEditor 
                 initialText={selectedClause.text} 
                 onCancel={() => setEditingClauseId(null)}
-                onSave={(newText) => {
+                onSave={(newText: string) => {
                   console.log("Saved new text:", newText);
                   setEditingClauseId(null);
                 }}

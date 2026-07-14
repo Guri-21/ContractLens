@@ -7,7 +7,7 @@ interface NavItem {
 }
 
 interface AppShellProps {
-  role: 'admin' | 'compliance';
+  role: 'admin' | 'legal';
   currentNav: string;
   onNavigate: (nav: string) => void;
   accentKey: 'gold' | 'crimson';
@@ -28,9 +28,9 @@ export default function AppShell({
   children
 }: AppShellProps) {
   const isAdmin = role === 'admin';
-  const workspaceLabel = isAdmin ? 'Admin Console' : 'Compliance';
-  const sectionLabel = isAdmin ? 'Administration' : 'Compliance';
-  const roleLabel = isAdmin ? 'Admin' : 'Compliance Officer';
+  const workspaceLabel = isAdmin ? 'Admin Console' : 'Legal & Compliance';
+  const sectionLabel = isAdmin ? 'Administration' : 'Workspace';
+  const roleLabel = isAdmin ? 'Admin' : 'Legal Team';
   const userName = isAdmin ? 'Jordan Okafor' : 'Sofia Marchetti';
   const userInitials = isAdmin ? 'JO' : 'SM';
 
@@ -42,14 +42,15 @@ export default function AppShell({
     { k: 'audit', label: 'Audit Trail' },
   ];
 
-  const compItems: NavItem[] = [
+  const legalItems: NavItem[] = [
     { k: 'dashboard', label: 'Overview' },
+    { k: 'workspace', label: 'Review Workspace' },
     { k: 'risk', label: 'Risk Analytics' },
     { k: 'clause', label: 'Clause Analytics' },
     { k: 'business', label: 'Business Analytics' },
   ];
 
-  const navItems = isAdmin ? adminItems : compItems;
+  const navItems = isAdmin ? adminItems : legalItems;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
