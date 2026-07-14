@@ -2,7 +2,12 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import bcrypt
 
-SECRET_KEY = "super-secret-key-for-demo"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-for-demo") # fallback for local
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
