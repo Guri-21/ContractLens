@@ -6,3 +6,11 @@ __pycache__/
 Data_sets_hackathon/
 .venv/
 venv/
+
+# HuggingFace model weights — never commit these to git
+models/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt

@@ -9,5 +9,8 @@ anthropic
 python-dotenv
 pyjwt
 passlib[bcrypt]
-
 prisma
+alembic
+transformers
+torch
+sentencepiece
