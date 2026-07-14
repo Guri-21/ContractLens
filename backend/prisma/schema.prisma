@@ -1,0 +1,91 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  hashed_password String
+  role_id         String
+  role            Role       @relation(fields: [role_id], references: [id])
+  documents       Document[]
+  audit_logs      AuditLog[]
+}
+
+model Document {
+  id             String   @id @default(uuid())
+  name           String
+  document_type  String
+  status         String
+  file_path      String
+  uploaded_by_id String
+  uploader       User     @relation(fields: [uploaded_by_id], references: [id])
+  clauses        Clause[]
+}
+
+model Clause {
+  id             String        @id
+  document_id    String
+  document       Document      @relation(fields: [document_id], references: [id])
+  document_name  String
+  document_type  String
+  section_number String?
+  title          String?
+  page           Int?
+  text           String
+  clause_type    String?
+  references     Json?         @default("[]")
+  overrides      Json?         @default("[]")
+  table_data     Json?
+  risks          RiskFinding[]
+}
+
+model RiskFinding {
+  id                     String  @id
+  clause_id              String
+  clause                 Clause  @relation(fields: [clause_id], references: [id])
+  risk_level             String
+  status                 String
+  reason                 String
+  playbook_rule_violated String?
+  evidence               Json?   @default("[]")
+  missing_documents      Json?
+  redline                Json?
+}
+
+model PlaybookRule {
+  id          String  @id @default(uuid())
+  title       String
+  description String
+  is_active   Boolean @default(true)
+}
+
+model CountryComplianceRule {
+  id               String  @id @default(uuid())
+  country_code     String
+  rule_title       String
+  rule_description String
+  is_active        Boolean @default(true)
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
+  action      String
+  target_type String
+  target_id   String?
+  timestamp   DateTime @default(now())
+}

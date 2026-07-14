@@ -1,2 +1,8 @@
-# Owner: Person 1 — database.py
-# TODO: SQLAlchemy engine + session + Base
+from prisma import Prisma
+
+db = Prisma()
+
+async def get_db():
+    if not db.is_connected():
+        await db.connect()
+    return db
