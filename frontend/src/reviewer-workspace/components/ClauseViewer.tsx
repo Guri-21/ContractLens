@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ShieldX, CheckCircle, FileText, FileWarning, ExternalLink } from 'lucide-react';
-import { ClauseDTO, RiskFindingDTO } from '../types';
+
 import { mockClauses, mockRiskFindings } from '../mocks/data';
 import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';

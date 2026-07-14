@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Save, X } from 'lucide-react';
+import { RefreshCw, Save } from 'lucide-react';
 
 interface InlineClauseEditorProps {
   initialText: string;
