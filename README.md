@@ -1,4 +1,4 @@
-﻿# ContractLens
+# ContractLens
 
 ContractLens is an AI-powered contract risk analyzer.
 
@@ -7,8 +7,9 @@ ContractLens is an AI-powered contract risk analyzer.
 ### Backend
 ```bash
 cd backend
-npm install
-npm run dev
+python -m venv venv && source venv/Scripts/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
 ```
 
 ### Frontend
