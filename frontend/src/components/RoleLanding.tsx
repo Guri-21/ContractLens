@@ -1,6 +1,5 @@
-
 interface RoleLandingProps {
-  onSelectRole: (role: 'admin' | 'compliance' | 'reviewer') => void;
+  onSelectRole: (role: 'admin' | 'compliance' | 'reviewer' | 'sandbox') => void;
   accentColor: string;
 }
 
@@ -38,6 +37,17 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       tagColor: '#38BDF8',
       hoverClass: 'hover:border-[#38BDF8] hover:-translate-y-0.5',
       style: { border: '1px solid #334155' }
+    },
+    {
+      key: 'sandbox' as const,
+      tag: 'Demo',
+      name: 'Component Sandbox',
+      desc: 'Cross-cutting components: version comparison, dependency graphs, and PDF viewers.',
+      cta: 'Enter sandbox →',
+      disabled: false,
+      tagColor: '#A855F7',
+      hoverClass: 'hover:border-[#A855F7] hover:-translate-y-0.5',
+      style: { border: '1px solid #334155' }
     }
   ];
 
@@ -55,11 +65,11 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
         </p>
       </div>
 
-      <div className="flex gap-5 flex-wrap justify-center max-w-[760px]">
+      <div className="flex gap-5 flex-wrap justify-center max-w-[1000px]">
         {roleTiles.map((t) => (
           <button
             key={t.key}
-            onClick={() => !t.disabled && onSelectRole(t.key as 'admin' | 'compliance')}
+            onClick={() => !t.disabled && onSelectRole(t.key)}
             disabled={t.disabled}
             className={`w-[230px] text-left p-6 rounded-md bg-[#1E293B] transition-all duration-200 ${t.hoverClass}`}
             style={t.style}
@@ -83,7 +93,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       </div>
 
       <div className="mt-10 font-mono text-[11px] text-[#475569] tracking-[0.06em]">
-        DEMO • RUNNING ON MOCK DATA • NO LIVE BACKEND
+        DEMO • RUNNING ON HYBRID MODE • CONNECTED BACKEND SERVICE
       </div>
     </div>
   );

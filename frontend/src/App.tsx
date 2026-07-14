@@ -6,6 +6,7 @@ import Admin from './pages/Admin';
 import AuditTrail from './pages/AuditTrail';
 import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
+import { Sandbox } from './Sandbox';
 import { fetchBackendDocuments } from './api/documents';
 import { fetchBackendAnalyze } from './api/analyze';
 import {
@@ -26,7 +27,7 @@ import {
 } from './mock/data';
 
 export default function App() {
-  const [role, setRole] = useState<'admin' | 'compliance' | 'reviewer' | null>(null);
+  const [role, setRole] = useState<'admin' | 'compliance' | 'reviewer' | 'sandbox' | null>(null);
   const [nav, setNav] = useState<string>('contracts');
   const [accentKey, setAccentKey] = useState<'gold' | 'crimson'>('gold');
 
@@ -217,6 +218,26 @@ export default function App() {
           ← Switch Workspace
         </button>
         <ReviewerWorkspace />
+      </div>
+    );
+  }
+
+  // Handle Sandbox layout
+  if (role === 'sandbox') {
+    return (
+      <div className="relative h-screen w-screen flex flex-col">
+        <div className="bg-gray-800 text-white p-2.5 flex items-center justify-between z-50">
+          <span className="text-sm font-semibold ml-2">Cross-Cutting Components Sandbox</span>
+          <button
+            onClick={() => setRole(null)}
+            className="bg-slate-700 hover:bg-slate-650 text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors mr-2 cursor-pointer"
+          >
+            ← Exit to Workspace Selector
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto bg-[#F8FAFC]">
+          <Sandbox />
+        </div>
       </div>
     );
   }
