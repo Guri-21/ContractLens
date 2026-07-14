@@ -1,6 +1,5 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
 pydantic
 python-multipart
 pdfplumber
@@ -8,4 +7,7 @@ PyMuPDF
 python-docx
 anthropic
 python-dotenv
-alembic
+pyjwt
+passlib[bcrypt]
+
+prisma
