@@ -12,9 +12,11 @@ import DocumentViewer from './pages/DocumentViewer';
 
 import { fetchBackendDocuments } from './api/documents';
 import { fetchAllRisks } from './api/analyze';
+import { fetchUsers, createUser, updateUser } from './api/users';
+import { fetchAuditLogs } from './api/audit';
 
 import { 
-  User, PlaybookVersion, Contract, 
+  User, PlaybookVersion, Contract, AuditEvent,
   playbookVersions, users as mockUsers, contracts as mockContracts,
   ruleSetsData, trendData, deptData, countryData, clauseData, clauseTypeRisk, auditData 
 } from './mock/data';
@@ -34,7 +36,8 @@ export default function App() {
 
   // Interactive datasets in state
   const [playbooks, setPlaybooks] = useState<PlaybookVersion[]>(playbookVersions);
-  const [usersList] = useState<User[]>(mockUsers);
+  const [usersList, setUsersList] = useState<User[]>(mockUsers);
+  const [auditList, setAuditList] = useState<AuditEvent[]>(auditData);
   const [contractsList, setContractsList] = useState<Contract[]>(mockContracts);
 
   // Filters & sorting for contract monitoring
@@ -110,6 +113,52 @@ export default function App() {
         if (backendContracts.length > 0) {
           setContractsList(backendContracts);
         }
+
+        // Fetch users from backend
+        try {
+          const usersData = await fetchUsers();
+          if (Array.isArray(usersData) && usersData.length > 0) {
+            const mappedUsers = usersData.map((u: any) => ({
+              id: u.id,
+              name: u.email.split('@')[0],
+              email: u.email,
+              role: u.role,
+              status: 'Active',
+              lastActive: 'Connected'
+            }));
+            setUsersList(mappedUsers);
+          }
+        } catch (e) {
+          console.warn('Failed to load backend users, using mock users.', e);
+        }
+
+        // Fetch audit logs from backend
+        try {
+          const auditLogs = await fetchAuditLogs();
+          if (Array.isArray(auditLogs) && auditLogs.length > 0) {
+            const mappedAudits = auditLogs.map((log: any) => ({
+              id: log.id,
+              contract: log.target_type === 'Document' ? (log.target_id || 'Document') : 'System Activity',
+              score: 42,
+              level: 'medium' as const,
+              uploadedAt: new Date(log.timestamp).toLocaleDateString(),
+              summary: `${log.action} on ${log.target_type}`,
+              timeline: [
+                {
+                  kind: log.action,
+                  color: '#9C7A3C',
+                  at: new Date(log.timestamp).toLocaleTimeString(),
+                  title: `${log.action} on ${log.target_type}`,
+                  note: `Target ID: ${log.target_id || 'N/A'}`,
+                  actor: log.user?.email || 'System'
+                }
+              ]
+            }));
+            setAuditList(mappedAudits);
+          }
+        } catch (e) {
+          console.warn('Failed to load backend audit logs, using mock audit logs.', e);
+        }
       } catch (err) {
         console.warn('Backend server not reachable.', err);
       }
@@ -137,7 +186,70 @@ export default function App() {
     setModalType('user');
   };
 
-  const handleModalSubmit = () => {
+  const handleModalSubmit = async (data: any) => {
+    if (modalType === 'user') {
+      try {
+        if (data.id) {
+          // Editing existing user
+          const updated = await updateUser(data.id, {
+            id: data.id,
+            email: data.email,
+            role: data.role
+          });
+          setUsersList(usersList.map((u) => u.id === data.id ? { 
+            ...u, 
+            email: updated.email, 
+            role: updated.role,
+            name: updated.email.split('@')[0]
+          } : u));
+        } else {
+          // Creating new user
+          const created = await createUser({
+            id: '',
+            email: data.email,
+            role: data.role,
+            password: 'password123'
+          });
+          setUsersList([...usersList, {
+            id: created.id,
+            name: created.email.split('@')[0],
+            email: created.email,
+            role: created.role,
+            status: 'Active',
+            lastActive: 'Connected'
+          }]);
+        }
+      } catch (err) {
+        console.error('Failed to save user in backend:', err);
+        // Local fallback if backend fails or is offline
+        if (data.id) {
+          setUsersList(usersList.map((u) => u.id === data.id ? { ...u, ...data } : u));
+        } else {
+          setUsersList([...usersList, {
+            id: 'u' + (usersList.length + 1),
+            name: data.name || data.email.split('@')[0],
+            email: data.email,
+            role: data.role,
+            status: 'Invited',
+            lastActive: '—'
+          }]);
+        }
+      }
+    } else if (modalType === 'playbook') {
+      // Local fallback for version history list
+      setPlaybooks([
+        {
+          id: 'v' + (playbooks.length + 40),
+          version: data.version,
+          date: data.date,
+          by: 'Sofia Marchetti',
+          docs: 3,
+          status: 'archived'
+        },
+        ...playbooks
+      ]);
+    }
+    
     setModalType(null);
     setModalFormInitial(null);
   };
@@ -211,7 +323,7 @@ export default function App() {
             />
           } />
           
-          <Route path="/admin/audit" element={<AuditTrail auditData={auditData} />} />
+          <Route path="/admin/audit" element={<AuditTrail auditData={auditList} />} />
           
           <Route path="/legal" element={
             <Dashboard

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 
 interface NavItem {
   k: string;
@@ -14,7 +14,7 @@ interface AppShellProps {
   onChangeAccent: (accent: 'gold' | 'crimson') => void;
   onSwitchRole: () => void;
   pendingContractsCount: number;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function AppShell({
@@ -27,6 +27,21 @@ export default function AppShell({
   pendingContractsCount,
   children
 }: AppShellProps) {
+  const [backendConnected, setBackendConnected] = useState(true);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/health');
+        setBackendConnected(res.ok);
+      } catch {
+        setBackendConnected(false);
+      }
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 10000);
+    return () => clearInterval(interval);
+  }, []);
   const isAdmin = role === 'admin';
   const workspaceLabel = isAdmin ? 'Admin Console' : 'Legal & Compliance';
   const sectionLabel = isAdmin ? 'Administration' : 'Workspace';
@@ -64,6 +79,13 @@ export default function AppShell({
           <div className="w-[1px] h-[22px] bg-[#334155]"></div>
           <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-[#94A3B8]">
             {workspaceLabel}
+          </div>
+          <div className="w-[1px] h-[22px] bg-[#334155]"></div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[#94A3B8]">
+              {backendConnected ? 'Connected' : 'Offline Mode'}
+            </span>
           </div>
         </div>
 
