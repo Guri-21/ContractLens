@@ -2,7 +2,10 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Literal, Any, Dict
 from datetime import datetime
 
-DocumentType = Literal["MSA", "SOW", "SLA", "NDA", "EXHIBIT", "PLAYBOOK", "LAW"]
+DocumentType = Literal[
+    "MSA", "SOW", "SLA", "NDA", "EXHIBIT", "AMENDMENT", "ORDER_FORM",
+    "DPA", "OTHER", "PLAYBOOK", "LAW",
+]
 RiskLevel = Literal["low", "medium", "high", "critical"]
 EvaluationStatus = Literal["evaluated", "not_evaluated"]
 
