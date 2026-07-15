@@ -22,3 +22,6 @@ backend/scripts/benchmark/openrouter_free_models.json
 *.pt
 *.pth
 *.ckpt
+
+# Local progress guide
+progress_guide.md

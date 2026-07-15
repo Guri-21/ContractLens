@@ -5,6 +5,7 @@ import { ClauseDTO, RiskFindingDTO } from '../types';
 import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';
 import { CrossDocumentComparison } from './CrossDocumentComparison';
+import { SourceCitation } from '../../components/document-viewer/SourceCitation';
 import { DependencyGraph } from '../../shared-components/DependencyGraph';
 import { VersionComparison } from '../../shared-components/VersionComparison';
 
@@ -224,20 +225,33 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                           </div>
                         )}
 
+                        {/* Source Citations — shows exact quotes, never paraphrased */}
+                        {risk.evidence && risk.evidence.length > 0 && (
+                          <div className="mb-4 mt-4">
+                            <SourceCitation
+                              finding={risk}
+                              sectionHierarchy={
+                                selectedClause.sectionNumber
+                                  ? `${selectedClause.documentName} › §${selectedClause.sectionNumber}${
+                                      selectedClause.title ? ` › ${selectedClause.title}` : ''
+                                    }`
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        )}
+
                         {/* Cross Document Contradiction handles evidence display if length > 1 */}
-                        {(risk.evidence && risk.evidence.length > 1) || (risk.comparisonText) ? (
-                          <CrossDocumentComparison 
-                            finding={risk} 
-                            onAccept={() => { if (!isLocked) console.log('Accept'); }}
-                            onReject={() => { if (!isLocked) console.log('Reject'); }}
-                            onEdit={() => { if (!isLocked) setEditingClauseId(selectedClause.id); }}
-                          />
-                        ) : risk.evidence && risk.evidence.length === 1 ? (
-                           <div className="mt-4 border-l-2 border-legal-meta pl-3">
-                              <div className="font-mono text-[10px] uppercase text-legal-meta mb-1">Source Evidence</div>
-                              <p className="font-body text-sm text-legal-text italic">"{risk.evidence[0].quote}"</p>
-                           </div>
-                        ) : null}
+                        {((risk.evidence && risk.evidence.length > 1) || (risk as any).comparisonText) && (
+                          <div className="mb-4">
+                            <CrossDocumentComparison 
+                              finding={risk} 
+                              onAccept={() => { if (!isLocked) console.log('Accept'); }}
+                              onReject={() => { if (!isLocked) console.log('Reject'); }}
+                              onEdit={() => { if (!isLocked) setEditingClauseId(selectedClause.id); }}
+                            />
+                          </div>
+                        )}
 
                         {risk.redline && !risk.comparisonText && (
                           <div className="mt-4 pt-4 border-t border-legal-border">
@@ -259,14 +273,25 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
 
             {/* Graph */}
             <div className="mt-12 pt-8 border-t border-legal-border">
-              <h3 className="font-display text-xl font-semibold text-legal-text mb-4">Clause Dependencies</h3>
+              <h3 className="font-display text-xl font-semibold text-legal-text mb-2 flex items-center gap-2">
+                Clause Dependencies
+                <span className="font-mono text-[10px] uppercase font-normal text-legal-meta">
+                  ({clauses.length} clauses)
+                </span>
+              </h3>
+              <p className="font-mono text-[10px] text-legal-meta mb-4">
+                Blue dashed = references · Red solid = overrides · Amber dashed = conflicts
+              </p>
               <div className="h-[400px] border border-legal-border bg-legal-bg rounded-sm shadow-inner">
                 <DependencyGraph clauses={clauses} risks={risks} />
               </div>
             </div>
 
+            {/* PdfViewer slot — implemented by Person 5 (cross-cutting-components branch) */}
+            {/* <PdfViewer documentId={selectedClause.documentId} page={selectedClause.page} highlightClauseId={selectedClause.id} /> */}
+
             {/* Version History */}
-            {selectedClause.versionHistory && selectedClause.versionHistory.length > 0 && (
+            {(selectedClause as any).versionHistory && (selectedClause as any).versionHistory.length > 0 && (
               <div className="mt-12 pt-8 border-t border-legal-border">
                 <VersionComparison clause={selectedClause} />
               </div>
