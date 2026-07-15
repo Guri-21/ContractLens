@@ -1,9 +1,247 @@
+import sys
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from pipeline.step02_segment import segment_clauses
+from pipeline.step01_parse import iter_document_pages, parse_document
+from pipeline.step02_segment import ClauseSegmentationIterator, segment_clauses
 
 
 class ClauseSegmentationTests(unittest.TestCase):
+    def test_parse_document_collects_page_iterator_without_changing_output(self):
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "contract.txt"
+            path.write_text("1. Payment\nCustomer shall pay.", encoding="utf-8")
+
+            pages = iter_document_pages(str(path))
+
+            self.assertIs(iter(pages), pages)
+            self.assertEqual(parse_document(str(path)), list(pages))
+
+    def test_docx_iterator_emits_one_normalized_page_without_binary_fixture(self):
+        document = SimpleNamespace(
+            paragraphs=[
+                SimpleNamespace(text="1. Payment"),
+                SimpleNamespace(text=""),
+                SimpleNamespace(text="Customer shall pay."),
+            ]
+        )
+        fake_docx = SimpleNamespace(Document=lambda _path: document)
+
+        with patch.dict(sys.modules, {"docx": fake_docx}):
+            pages = list(iter_document_pages("contract.docx"))
+
+        self.assertEqual(
+            pages,
+            [{"page": 1, "text": "1. Payment\nCustomer shall pay.", "tables": []}],
+        )
+
+    def test_pdf_iterator_is_lazy_and_emits_each_page_with_tables_and_ocr(self):
+        opened = []
+
+        class FakePage:
+            def __init__(self, text, tables):
+                self._text = text
+                self._tables = tables
+
+            def extract_text(self):
+                return self._text
+
+            def extract_tables(self):
+                return self._tables
+
+        class FakePdf:
+            pages = [FakePage("First page", [["A"]]), FakePage("", [])]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+        def open_pdf(path):
+            opened.append(path)
+            return FakePdf()
+
+        fake_pdfplumber = SimpleNamespace(open=open_pdf)
+        with (
+            patch.dict(sys.modules, {"pdfplumber": fake_pdfplumber}),
+            patch("pipeline.step01_parse._ocr_page_fitz", return_value="OCR page"),
+        ):
+            pages = iter_document_pages("contract.pdf")
+            self.assertEqual(opened, [])
+            self.assertEqual(
+                list(pages),
+                [
+                    {"page": 1, "text": "First page", "tables": [["A"]]},
+                    {"page": 2, "text": "OCR page", "tables": []},
+                ],
+            )
+
+        self.assertEqual(opened, ["contract.pdf"])
+
+    def test_streaming_segmenter_waits_for_confirmed_boundary(self):
+        stream = ClauseSegmentationIterator("d1", "MSA.txt", "MSA")
+
+        self.assertEqual(
+            stream.feed_page(
+                {
+                    "page": 1,
+                    "text": "1. Payment\nCustomer shall pay",
+                    "tables": [],
+                }
+            ),
+            [],
+        )
+        emitted = stream.feed_page(
+            {
+                "page": 2,
+                "text": (
+                    "within 30 days.\n"
+                    "2. Termination\n"
+                    "Either party may terminate."
+                ),
+                "tables": [],
+            }
+        )
+
+        self.assertEqual(len(emitted), 1)
+        self.assertEqual(emitted[0]["sectionNumber"], "1")
+        self.assertIn("within 30 days", emitted[0]["text"])
+        self.assertEqual(stream.flush()[0]["sectionNumber"], "2")
+
+    def test_batch_wrapper_matches_streaming_output(self):
+        pages = [
+            {
+                "page": 1,
+                "text": "1. Payment\nCustomer shall pay",
+                "tables": [],
+            },
+            {
+                "page": 2,
+                "text": (
+                    "within 30 days.\n"
+                    "2. Termination\n"
+                    "Either party may terminate."
+                ),
+                "tables": [],
+            },
+        ]
+
+        batch = segment_clauses(pages, "d1", "MSA.txt", "MSA")
+        stream = ClauseSegmentationIterator("d1", "MSA.txt", "MSA")
+        incremental = [
+            clause
+            for page in pages
+            for clause in stream.feed_page(page)
+        ] + stream.flush()
+
+        self.assertEqual(batch, incremental)
+
+    def test_streaming_segmenter_discards_emitted_text_and_pages(self):
+        stream = ClauseSegmentationIterator("d1", "MSA.txt", "MSA")
+        stream.feed_page(
+            {
+                "page": 1,
+                "text": "1. Payment\nCustomer shall pay.",
+                "tables": [],
+            }
+        )
+
+        emitted = stream.feed_page(
+            {
+                "page": 2,
+                "text": "2. Termination\nEither party may terminate.",
+                "tables": [],
+            }
+        )
+
+        self.assertEqual([clause["sectionNumber"] for clause in emitted], ["1"])
+        self.assertNotIn("_pages", vars(stream))
+        self.assertNotIn("Customer shall pay", repr(vars(stream)))
+
+        stream.feed_page(
+            {
+                "page": 3,
+                "text": "3. Notices\nNotices must be written.",
+                "tables": [],
+            }
+        )
+        self.assertNotIn("Either party may terminate", repr(vars(stream)))
+
+    def test_streaming_segmenter_propagates_tables_across_clause_pages(self):
+        stream = ClauseSegmentationIterator("d1", "MSA.txt", "MSA")
+        self.assertEqual(
+            stream.feed_page(
+                {
+                    "page": 4,
+                    "text": "1. Fees\nThe fees are:",
+                    "tables": [["Item", "Price"]],
+                }
+            ),
+            [],
+        )
+        self.assertEqual(
+            stream.feed_page(
+                {
+                    "page": 5,
+                    "text": "Service A costs 100.",
+                    "tables": [["Service A", "100"]],
+                }
+            ),
+            [],
+        )
+
+        emitted = stream.feed_page(
+            {
+                "page": 6,
+                "text": "2. Termination\nEither party may terminate.",
+                "tables": [],
+            }
+        )
+
+        self.assertEqual(
+            emitted[0]["tableData"],
+            [["Item", "Price"], ["Service A", "100"]],
+        )
+
+    def test_streaming_segmenter_preserves_start_page_for_spanning_clauses(self):
+        stream = ClauseSegmentationIterator("d1", "MSA.txt", "MSA")
+        stream.feed_page(
+            {"page": 7, "text": "1. Payment\nCustomer shall pay", "tables": []}
+        )
+        stream.feed_page(
+            {"page": 8, "text": "within 30 days.", "tables": []}
+        )
+        emitted = stream.feed_page(
+            {
+                "page": 9,
+                "text": "2. Termination\nEither party may terminate.",
+                "tables": [],
+            }
+        )
+
+        self.assertEqual(emitted[0]["page"], 7)
+        self.assertEqual(stream.flush()[0]["page"], 9)
+
+    def test_repeated_input_produces_stable_unique_clause_ids(self):
+        pages = [
+            {
+                "page": 1,
+                "text": "1. Payment\nPay promptly.\n2. Notices\nGive notice.",
+                "tables": [],
+            }
+        ]
+
+        first = segment_clauses(pages, "d1", "MSA.txt", "MSA")
+        second = segment_clauses(pages, "d1", "MSA.txt", "MSA")
+        first_ids = [clause["id"] for clause in first]
+
+        self.assertEqual(first_ids, [clause["id"] for clause in second])
+        self.assertEqual(len(first_ids), len(set(first_ids)))
+
     def test_splits_inline_decimal_sections_without_absorbing_next_clause(self):
         pages = [
             {

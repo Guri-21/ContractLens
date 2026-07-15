@@ -4,23 +4,31 @@ Extracts raw text + page metadata from PDF or DOCX.
 Returns a list of page dicts: {page, text, tables}
 """
 import os
+from collections.abc import Iterator
 from typing import Any
 
 
 def parse_document(file_path: str) -> list[dict[str, Any]]:
+    return list(iter_document_pages(file_path))
+
+
+def iter_document_pages(file_path: str) -> Iterator[dict[str, Any]]:
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
-        return _parse_pdf(file_path)
+        yield from _iter_pdf_pages(file_path)
+        return
     if ext in (".docx", ".doc"):
-        return _parse_docx(file_path)
+        yield from _iter_docx_pages(file_path)
+        return
     if ext == ".txt":
-        return _parse_txt(file_path)
+        yield from _iter_txt_pages(file_path)
+        return
     raise ValueError(f"Unsupported file type: {ext}")
 
 
-def _parse_pdf(path: str) -> list[dict[str, Any]]:
+def _iter_pdf_pages(path: str) -> Iterator[dict[str, Any]]:
     import pdfplumber
-    pages = []
+
     with pdfplumber.open(path) as pdf:
         for i, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ""
@@ -28,21 +36,21 @@ def _parse_pdf(path: str) -> list[dict[str, Any]]:
                 # OCR fallback via PyMuPDF
                 text = _ocr_page_fitz(path, i - 1)
             tables = page.extract_tables() or []
-            pages.append({"page": i, "text": text, "tables": tables})
-    return pages
+            yield {"page": i, "text": text, "tables": tables}
 
 
-def _parse_docx(path: str) -> list[dict[str, Any]]:
+def _iter_docx_pages(path: str) -> Iterator[dict[str, Any]]:
     from docx import Document
+
     doc = Document(path)
     full_text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-    return [{"page": 1, "text": full_text, "tables": []}]
+    yield {"page": 1, "text": full_text, "tables": []}
 
 
-def _parse_txt(path: str) -> list[dict[str, Any]]:
+def _iter_txt_pages(path: str) -> Iterator[dict[str, Any]]:
     with open(path, "r", encoding="utf-8", errors="replace") as file:
         text = file.read()
-    return [{"page": 1, "text": text, "tables": []}]
+    yield {"page": 1, "text": text, "tables": []}
 
 
 def _ocr_page_fitz(path: str, page_index: int) -> str:

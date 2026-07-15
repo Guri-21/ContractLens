@@ -7,6 +7,7 @@ This is deterministic: no LLM is used for segmentation.
 
 import re
 import uuid
+from copy import deepcopy
 
 
 # Candidate markers. We filter context in code so legal citations and numbers
@@ -26,22 +27,94 @@ _CITATION_WORDS = {"usc", "u.s.c", "cfr", "ccr", "usca", "uscs", "fed", "usd", "
 _TITLE_MAX_CHARS = 100
 
 
+class ClauseSegmentationIterator:
+    def __init__(self, document_id: str, document_name: str, document_type: str):
+        self._document_id = document_id
+        self._document_name = document_name
+        self._document_type = document_type
+        self._pending_pages: list[dict] = []
+        self._next_ordinal = 0
+        self._flushed = False
+
+    def feed_page(self, page: dict) -> list[dict]:
+        if self._flushed:
+            raise RuntimeError("Cannot feed pages after segmentation is flushed")
+
+        self._pending_pages.append(
+            {
+                "page": page["page"],
+                "text": page["text"],
+                "tables": deepcopy(page.get("tables", [])),
+            }
+        )
+        return self._emit_confirmed()
+
+    def flush(self) -> list[dict]:
+        if self._flushed:
+            return []
+        self._flushed = True
+        text = self._pending_text()
+        segments = _regex_split(text, self._pending_pages)
+        if not segments:
+            segments = [_fallback_segment(text, self._pending_pages)]
+        clauses = self._to_dtos(segments)
+        self._pending_pages = []
+        return clauses
+
+    def _emit_confirmed(self) -> list[dict]:
+        text = self._pending_text()
+        markers = _find_section_markers(text)
+        if not markers:
+            return []
+        if len(markers) == 1:
+            self._pending_pages = _pages_from_offset(
+                self._pending_pages, markers[0]["start"]
+            )
+            return []
+
+        segments = _segments_from_markers(text, self._pending_pages, markers)
+        clauses = self._to_dtos(segments[:-1])
+        self._pending_pages = _pages_from_offset(
+            self._pending_pages, markers[-1]["start"]
+        )
+        return clauses
+
+    def _pending_text(self) -> str:
+        return "\n".join(page["text"] for page in self._pending_pages)
+
+    def _to_dtos(self, segments: list[dict]) -> list[dict]:
+        clauses = _to_clause_dtos(
+            segments,
+            self._document_id,
+            self._document_name,
+            self._document_type,
+            start_index=self._next_ordinal,
+        )
+        self._next_ordinal += len(segments)
+        return clauses
+
+
 def segment_clauses(
     pages: list[dict],
     document_id: str,
     document_name: str,
     document_type: str,
 ) -> list[dict]:
-    full_text = "\n".join(p["text"] for p in pages)
-    raw_segments = _regex_split(full_text, pages)
-    if not raw_segments:
-        raw_segments = [{"sectionNumber": "1", "title": None, "text": full_text, "page": 1}]
-    return _to_clause_dtos(raw_segments, document_id, document_name, document_type)
+    stream = ClauseSegmentationIterator(document_id, document_name, document_type)
+    clauses = []
+    for page in pages:
+        clauses.extend(stream.feed_page(page))
+    clauses.extend(stream.flush())
+    return clauses
 
 
 def _regex_split(text: str, pages: list[dict]) -> list[dict]:
-    page_breaks = _build_page_map(pages)
     matches = _find_section_markers(text)
+    return _segments_from_markers(text, pages, matches)
+
+
+def _segments_from_markers(text: str, pages: list[dict], matches: list[dict]) -> list[dict]:
+    page_breaks = _build_page_map(pages)
     segments = []
 
     for i, marker in enumerate(matches):
@@ -55,10 +128,21 @@ def _regex_split(text: str, pages: list[dict]) -> list[dict]:
                 "title": title,
                 "text": body,
                 "page": _page_for_offset(start, page_breaks),
+                "tableData": _tables_for_offsets(start, end, pages, page_breaks),
             }
         )
 
     return segments
+
+
+def _fallback_segment(text: str, pages: list[dict]) -> dict:
+    return {
+        "sectionNumber": "1",
+        "title": None,
+        "text": text,
+        "page": pages[0]["page"] if pages else 1,
+        "tableData": _all_tables(pages),
+    }
 
 
 def _find_section_markers(text: str) -> list[dict]:
@@ -231,6 +315,21 @@ def _build_page_map(pages: list[dict]) -> list[tuple[int, int]]:
     return result
 
 
+def _pages_from_offset(pages: list[dict], offset: int) -> list[dict]:
+    page_breaks = _build_page_map(pages)
+    for index, (page_start, _page_number) in enumerate(page_breaks):
+        page = pages[index]
+        page_end = page_start + len(page["text"])
+        if offset <= page_end:
+            retained = {
+                "page": page["page"],
+                "text": page["text"][offset - page_start :],
+                "tables": deepcopy(page.get("tables", [])),
+            }
+            return [retained, *deepcopy(pages[index + 1 :])]
+    return []
+
+
 def _page_for_offset(offset: int, page_breaks: list[tuple[int, int]]) -> int:
     page = 1
     for start, p in page_breaks:
@@ -239,22 +338,65 @@ def _page_for_offset(offset: int, page_breaks: list[tuple[int, int]]) -> int:
     return page
 
 
-def _to_clause_dtos(segments: list[dict], doc_id: str, doc_name: str, doc_type: str) -> list[dict]:
-    return [
-        {
-            "id": f"c_{uuid.uuid4().hex[:8]}",
-            "documentId": doc_id,
-            "documentName": doc_name,
-            "documentType": doc_type,
-            "sectionNumber": s["sectionNumber"],
-            "title": s["title"],
-            "page": s["page"],
-            "text": s["text"] or s["title"] or "",
-            "clauseType": None,
-            "references": [],
-            "overrides": [],
-            "tableData": None,
-        }
-        for s in segments
-        if s["text"].strip() or (s["title"] or "").strip()
+def _tables_for_offsets(
+    start: int,
+    end: int,
+    pages: list[dict],
+    page_breaks: list[tuple[int, int]],
+) -> list | None:
+    start_page = _page_for_offset(start, page_breaks)
+    end_page = _page_for_offset(max(start, end - 1), page_breaks)
+    tables = [
+        deepcopy(table)
+        for page in pages
+        if start_page <= page["page"] <= end_page
+        for table in page.get("tables", [])
     ]
+    return tables or None
+
+
+def _all_tables(pages: list[dict]) -> list | None:
+    tables = [deepcopy(table) for page in pages for table in page.get("tables", [])]
+    return tables or None
+
+
+def _clause_id(doc_id: str, ordinal: int, segment: dict) -> str:
+    identity = ":".join(
+        (
+            doc_id,
+            str(ordinal),
+            segment["sectionNumber"],
+            str(segment["page"]),
+        )
+    )
+    return f"c_{uuid.uuid5(uuid.NAMESPACE_URL, identity).hex[:8]}"
+
+
+def _to_clause_dtos(
+    segments: list[dict],
+    doc_id: str,
+    doc_name: str,
+    doc_type: str,
+    start_index: int = 0,
+) -> list[dict]:
+    clauses = []
+    for offset, segment in enumerate(segments):
+        if not segment["text"].strip() and not (segment["title"] or "").strip():
+            continue
+        clauses.append(
+            {
+                "id": _clause_id(doc_id, start_index + offset, segment),
+                "documentId": doc_id,
+                "documentName": doc_name,
+                "documentType": doc_type,
+                "sectionNumber": segment["sectionNumber"],
+                "title": segment["title"],
+                "page": segment["page"],
+                "text": segment["text"] or segment["title"] or "",
+                "clauseType": None,
+                "references": [],
+                "overrides": [],
+                "tableData": deepcopy(segment.get("tableData")),
+            }
+        )
+    return clauses

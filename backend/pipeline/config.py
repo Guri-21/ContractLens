@@ -1,5 +1,8 @@
 import os
+from dataclasses import dataclass
 from pathlib import Path
+
+from app.analysis_schemas import AnalysisMode
 
 # Pipeline model configuration.
 # To swap a model, change the environment variable instead of editing step code.
@@ -20,6 +23,32 @@ def _load_dotenv_once() -> None:
 
 
 _load_dotenv_once()
+
+
+@dataclass(frozen=True)
+class ModePolicy:
+    classificationBatchSize: int
+    classifyOtherWithLlm: bool
+    maxContradictionPairs: int
+    contradictionBatchSize: int
+    semanticRuleBatchSize: int
+    autoRedlines: bool
+    verifyHighRisk: bool
+    maxRetries: int
+
+
+_MODE_POLICIES = {
+    AnalysisMode.FAST: ModePolicy(8, False, 10, 8, 8, False, False, 1),
+    AnalysisMode.DEEP: ModePolicy(4, True, 30, 4, 4, True, True, 1),
+}
+
+
+def get_mode_policy(mode: AnalysisMode) -> ModePolicy:
+    try:
+        normalized = mode if isinstance(mode, AnalysisMode) else AnalysisMode(mode)
+        return _MODE_POLICIES[normalized]
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"Unsupported analysis mode: {mode}") from exc
 
 PIPELINE_CONFIG = {
     # Step 3: Clause Classification
