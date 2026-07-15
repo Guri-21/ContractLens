@@ -9,8 +9,12 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.get("/")
 async def list_users(db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin"]))):
-    users = await db.user.find_many(include={"role": True})
-    return [{"id": u.id, "email": u.email, "role": u.role.name} for u in users]
+    users = await db.user.find_many(include={"role": True, "assigned_docs": True})
+    result = []
+    for u in users:
+        docs = [{"id": d.id, "name": d.name, "status": d.status} for d in u.assigned_docs] if u.assigned_docs else []
+        result.append({"id": u.id, "email": u.email, "role": u.role.name, "assigned_docs": docs})
+    return result
 
 class UserCreate(BaseModel):
     email: str
@@ -28,7 +32,7 @@ async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), curr
     user = await db.user.create(
         data={
             "email": request.email,
-            "hashed_password": get_password_hash("reviewer123"),
+            "hashed_password": get_password_hash("abc123"),
             "role_id": role.id
         }
     )

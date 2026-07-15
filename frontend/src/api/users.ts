@@ -13,6 +13,7 @@ export interface UserResponse {
   email: string;
   role: string;
   status?: string; // Missing from backend right now, optional for integration
+  assigned_docs?: { id: string; name: string; status: string }[];
 }
 
 export const fetchUsers = async (): Promise<UserResponse[]> => {

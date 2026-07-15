@@ -1,7 +1,7 @@
 # Owner: Person 1 — main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import documents, analyze, auth, playbook, country_rules, users, audit
+from app.api import documents, analyze, auth, playbook, country_rules, users, audit, admin_analytics
 from app.database import db
 import uvicorn
 
@@ -32,6 +32,7 @@ app.include_router(country_rules.router)
 app.include_router(users.router)
 app.include_router(audit.router)
 app.include_router(analyze.router)
+app.include_router(admin_analytics.router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
