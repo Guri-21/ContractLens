@@ -285,15 +285,17 @@ export default function App() {
       <AppShell
         role={role as 'admin' | 'legal'}
         currentNav={currentNav}
-         onNavigate={(n) => {
-           if (role === 'admin') {
-             if (n === 'audit') navigate('/admin/audit');
-             else navigate('/admin');
-           } else {
-             if (n === 'dashboard') navigate('/legal');
-             else if (n === 'workspace') navigate('/legal/workspace');
-             else navigate(`/legal/${n}`);
-           }
+        onNavigate={(n) => {
+          if (role === 'admin') {
+            if (n === 'audit') navigate('/admin/audit');
+            else if (n === 'playbook') navigate('/admin/playbook');
+            else if (n === 'users') navigate('/admin/users');
+            else navigate('/admin');
+          } else {
+            if (n === 'dashboard') navigate('/legal');
+            else if (n === 'workspace') navigate('/legal/workspace');
+            else navigate(`/legal/${n}`);
+          }
         }}
         accentKey={accentKey}
         onChangeAccent={(acc) => setAccentKey(acc)}
@@ -302,6 +304,46 @@ export default function App() {
       >
         <Routes>
           <Route path="/admin" element={
+            <Admin
+              playbookVersions={playbooks}
+              onSetActivePlaybook={handleSetActivePlaybook}
+              onOpenPlaybookModal={() => { setModalFormInitial({}); setModalType('playbook'); }}
+              usersList={usersList}
+              onOpenUserModal={() => { setModalFormInitial({}); setModalType('user'); }}
+              onEditUser={handleEditUser}
+              contracts={contractsList}
+              activeNav={currentNav}
+              search={search}
+              onSearchChange={setSearch}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSetSort={handleSetSort}
+            />
+          } />
+
+          <Route path="/admin/playbook" element={
+            <Admin
+              playbookVersions={playbooks}
+              onSetActivePlaybook={handleSetActivePlaybook}
+              onOpenPlaybookModal={() => { setModalFormInitial({}); setModalType('playbook'); }}
+              usersList={usersList}
+              onOpenUserModal={() => { setModalFormInitial({}); setModalType('user'); }}
+              onEditUser={handleEditUser}
+              contracts={contractsList}
+              activeNav={currentNav}
+              search={search}
+              onSearchChange={setSearch}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSetSort={handleSetSort}
+            />
+          } />
+
+          <Route path="/admin/users" element={
             <Admin
               playbookVersions={playbooks}
               onSetActivePlaybook={handleSetActivePlaybook}
@@ -408,6 +450,12 @@ function getCurrentNav(pathname: string, role: 'admin' | 'legal' | null): string
     return 'dashboard';
   }
 
-  if (pathname.includes('/audit')) return 'audit';
-  return 'contracts';
+  if (role === 'admin') {
+    if (pathname === '/admin/playbook') return 'playbook';
+    if (pathname === '/admin/users') return 'users';
+    if (pathname === '/admin/audit') return 'audit';
+    return 'contracts';
+  }
+
+  return 'dashboard';
 }
