@@ -33,3 +33,15 @@ export const createUser = async (data: { email: string; role_id?: string; passwo
   if (!res.ok) throw new Error('Failed to create user');
   return res.json();
 };
+
+export const deleteUser = async (id: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Failed to delete user');
+  }
+  return res.json();
+};

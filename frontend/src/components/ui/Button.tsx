@@ -12,7 +12,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-md";
     
     const variants = {
-      primary: "bg-primary text-white hover:bg-primary-hover focus:ring-primary",
+      primary: "bg-slate-900 text-white hover:bg-black focus:ring-slate-900",
       secondary: "bg-secondary text-text-dark hover:bg-secondary-hover focus:ring-primary",
       danger: "bg-status-danger text-white hover:bg-red-700 focus:ring-status-danger",
       outline: "border border-slate-300 bg-transparent hover:bg-slate-50 text-text focus:ring-primary",

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../lib/context/AuthContext';
 import { Button } from '../components/ui/Button';
-import { Shield } from 'lucide-react';
+import { Shield, Scale } from 'lucide-react';
 
 export default function SignIn() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleQuickLogin = async (role: 'admin' | 'advisor') => {
     setError('');
     try {
-      await login(email, password);
+      if (role === 'admin') {
+        await login('admin@contractlens.com', 'admin123');
+      } else {
+        await login('reviewer@contractlens.com', 'reviewer123');
+      }
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');
     }
@@ -32,7 +32,7 @@ export default function SignIn() {
           ContractLens
         </h2>
         <p className="text-center text-text-light mb-8 text-sm">
-          Sign in to the Enterprise Portal
+          Select your role to access the Enterprise Portal
         </p>
         
         {error && (
@@ -41,34 +41,27 @@ export default function SignIn() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-text-dark mb-1.5">Email Address</label>
-            <input 
-              type="email" 
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="advisor@enterprise.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-dark mb-1.5">Password</label>
-            <input 
-              type="password" 
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          
-          <Button type="submit" variant="primary" className="w-full mt-2" isLoading={isLoading}>
-            Authenticate
+        <div className="space-y-4">
+          <Button 
+            variant="primary" 
+            className="w-full h-14 text-base flex items-center justify-center gap-2" 
+            isLoading={isLoading}
+            onClick={() => handleQuickLogin('admin')}
+          >
+            <Shield className="w-5 h-5" />
+            Sign in as Admin
           </Button>
-        </form>
+          
+          <Button 
+            variant="outline" 
+            className="w-full h-14 text-base flex items-center justify-center gap-2 border-2" 
+            isLoading={isLoading}
+            onClick={() => handleQuickLogin('advisor')}
+          >
+            <Scale className="w-5 h-5" />
+            Sign in as Legal Advisor
+          </Button>
+        </div>
         
         <div className="mt-8 text-center text-xs text-slate-400">
           Access is restricted to authorized personnel. <br/>

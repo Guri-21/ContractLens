@@ -79,22 +79,81 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Additional layout for charts would go here (Recharts implementation omitted for brevity) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="h-96">
+        <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>System Activity</CardTitle>
+            <CardTitle>System Activity (Analytics)</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center h-64">
-            <p className="text-text-light">Chart visualization will render here.</p>
+          <CardContent>
+            <div className="flex items-end gap-2 h-64 mt-4 w-full justify-between">
+              {[40, 70, 45, 90, 65, 80, 55, 30].map((h, i) => (
+                <div key={i} className="w-full bg-slate-100 rounded-t-md relative overflow-hidden" style={{ height: `${h}%` }}>
+                   <div className="absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-4">
+              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
+              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
+              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="h-96">
+        
+        <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Recent Documents</CardTitle>
+            <CardTitle>Recent Documents (MSAs & SOWs)</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center h-64">
-            <p className="text-text-light">Recent document list will render here.</p>
+          <CardContent>
+            <div className="space-y-4 mt-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
+                    <div className="h-3 w-1/2 bg-slate-200 rounded animate-pulse" />
+                  </div>
+                  <div className="h-6 w-16 bg-slate-200 rounded-full animate-pulse flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Legal Advisors Directory</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="pb-3 font-medium text-sm text-text-light w-1/3">Name</th>
+                    <th className="pb-3 font-medium text-sm text-text-light w-1/3">Role</th>
+                    <th className="pb-3 font-medium text-sm text-text-light w-1/3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3].map((i) => (
+                    <tr key={i} className="border-b border-slate-50 last:border-0">
+                      <td className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
+                          <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="inline-block h-6 w-20 bg-slate-200 rounded-full animate-pulse" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       </div>

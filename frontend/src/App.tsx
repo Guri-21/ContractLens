@@ -5,6 +5,11 @@ import Home from './pages/Home';
 import SignIn from './pages/SignIn';
 import AdminLayout from './components/layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import MsaRepository from './pages/admin/MsaRepository';
+import LegalAdvisors from './pages/admin/LegalAdvisors';
+import Analytics from './pages/admin/Analytics';
+import AuditLogs from './pages/admin/AuditLogs';
+import Settings from './pages/admin/Settings';
 // Import original Advisor components that I'm not modifying
 import AppShell from './components/AppShell';
 import Dashboard from './pages/Dashboard';
@@ -29,11 +34,11 @@ export default function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             {/* Placeholder routes for the rest of Admin pages */}
-            <Route path="msa" element={<div className="p-8">MSA Repository (Integration Ready)</div>} />
-            <Route path="advisors" element={<div className="p-8">Legal Advisors (Integration Ready)</div>} />
-            <Route path="analytics" element={<div className="p-8">Analytics (Integration Ready)</div>} />
-            <Route path="audit" element={<div className="p-8">Audit Logs (Integration Ready)</div>} />
-            <Route path="settings" element={<div className="p-8">Settings (Integration Ready)</div>} />
+            <Route path="msa" element={<MsaRepository />} />
+            <Route path="advisors" element={<LegalAdvisors />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="audit" element={<AuditLogs />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Legal Advisor Routes - preserving original architecture inside ProtectedRoute */}
