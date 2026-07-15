@@ -20,7 +20,8 @@ model User {
   hashed_password String
   role_id         String
   role            Role       @relation(fields: [role_id], references: [id])
-  documents       Document[]
+  documents       Document[] @relation("UploadedDocuments")
+  assigned_docs   Document[] @relation("AssignedDocuments")
   audit_logs      AuditLog[]
   notifications   Notification[]
 }
@@ -32,7 +33,9 @@ model Document {
   status         String
   file_path      String
   uploaded_by_id         String
-  uploader               User                     @relation(fields: [uploaded_by_id], references: [id])
+  uploader               User                     @relation("UploadedDocuments", fields: [uploaded_by_id], references: [id])
+  assigned_to_id         String?
+  assigned_to            User?                    @relation("AssignedDocuments", fields: [assigned_to_id], references: [id])
   clauses                Clause[]
   missing_clauses        MissingMandatoryClause[]
   country_compliance     CountryLawCompliance[]
