@@ -15,6 +15,14 @@ from .step09_redline    import generate_redlines
 from .step10_report     import generate_report
 
 
+def _select_primary_pair(documents: list[dict]) -> tuple[dict, dict] | None:
+    msa_document = next((document for document in documents if document["type"] == "MSA"), None)
+    sow_document = next((document for document in documents if document["type"] == "SOW"), None)
+    if msa_document is None or sow_document is None:
+        return None
+    return msa_document, sow_document
+
+
 def run_analysis_pipeline(
     documents: list[dict],
     playbook_rules: list[str],
@@ -51,10 +59,12 @@ def run_analysis_pipeline(
     ]
 
     contradiction_findings: list[dict] = []
-    if len(documents) == 2:
-        doc_a_clauses = [c for c in eligible_clauses if c["documentId"] == documents[0]["id"]]
-        doc_b_clauses = [c for c in eligible_clauses if c["documentId"] == documents[1]["id"]]
-        contradiction_findings = detect_contradictions(doc_a_clauses, doc_b_clauses)
+    primary_pair = _select_primary_pair(documents)
+    if primary_pair is not None:
+        msa_document, sow_document = primary_pair
+        msa_clauses = [c for c in eligible_clauses if c["documentId"] == msa_document["id"]]
+        sow_clauses = [c for c in eligible_clauses if c["documentId"] == sow_document["id"]]
+        contradiction_findings = detect_contradictions(msa_clauses, sow_clauses)
 
     # ── Step 6: refusal engine — missing documents ───────────────
     # ── Step 7: playbook validation ──────────────────────────────
