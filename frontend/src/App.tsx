@@ -13,8 +13,8 @@ import { fetchAllRisks } from './api/analyze';
 
 import { 
   User, PlaybookVersion, Contract, 
-  playbookVersions, users as mockUsers, contracts as mockContracts,
-  ruleSetsData, trendData, deptData, countryData, clauseData, clauseTypeRisk, auditData 
+  playbookVersions, users as mockUsers,
+  ruleSetsData, auditData 
 } from './mock/data';
 
 // Hardcoded accents
@@ -27,13 +27,14 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [role, setRole] = useState<'admin' | 'legal' | null>(null);
+  const [role, setRole] = useState<'admin' | 'reviewer' | null>(null);
   const [accentKey, setAccentKey] = useState<'gold' | 'crimson'>('gold');
 
   // Interactive datasets in state
   const [playbooks, setPlaybooks] = useState<PlaybookVersion[]>(playbookVersions);
   const [usersList] = useState<User[]>(mockUsers);
-  const [contractsList, setContractsList] = useState<Contract[]>(mockContracts);
+  const [contractsList, setContractsList] = useState<Contract[]>([]);
+  const [globalRisks, setGlobalRisks] = useState<any[]>([]);
 
   // Filters & sorting for contract monitoring
   const [search, setSearch] = useState('');
@@ -47,10 +48,9 @@ export default function App() {
   const [riskTab, setRiskTab] = useState<'dept' | 'country' | 'clause'>('dept');
 
   useEffect(() => {
-    // If user arrived at a specific URL without a role, we could infer it, but for demo:
     if (!role && location.pathname !== '/') {
       if (location.pathname.startsWith('/admin')) setRole('admin');
-      else if (location.pathname.startsWith('/legal')) setRole('legal');
+      else if (location.pathname.startsWith('/reviewer')) setRole('reviewer');
     }
   }, [role, location]);
 
@@ -107,6 +107,14 @@ export default function App() {
 
         if (backendContracts.length > 0) {
           setContractsList(backendContracts);
+        } else {
+          setContractsList([]); // Clear if empty
+        }
+
+        if (Array.isArray(analyzeData)) {
+          setGlobalRisks(analyzeData);
+        } else {
+          setGlobalRisks([]);
         }
       } catch (err) {
         console.warn('Backend server not reachable.', err);
@@ -155,7 +163,7 @@ export default function App() {
         onSelectRole={(r) => {
           setRole(r as any);
           if (r === 'admin') navigate('/admin');
-          if (r === 'legal') navigate('/legal');
+          if (r === 'reviewer') navigate('/reviewer/workspace');
         }}
         accentColor={activeAccent.color}
       />
@@ -169,16 +177,16 @@ export default function App() {
   return (
     <>
       <AppShell
-        role={role as 'admin' | 'legal'}
+        role={role as 'admin' | 'reviewer'}
         currentNav={currentNav}
          onNavigate={(n) => {
            if (role === 'admin') {
              if (n === 'audit') navigate('/admin/audit');
              else navigate('/admin');
-           } else {
-             if (n === 'dashboard') navigate('/legal');
-             else if (n === 'workspace') navigate('/legal/workspace');
-             else navigate(`/legal/${n}`);
+           } else if (role === 'reviewer') {
+             if (n === 'workspace') navigate('/reviewer/workspace');
+             else if (n === 'dashboard') navigate('/reviewer/dashboard');
+             else navigate(`/reviewer/${n}`);
            }
         }}
         accentKey={accentKey}
@@ -211,14 +219,12 @@ export default function App() {
           
           <Route path="/admin/audit" element={<AuditTrail auditData={auditData} />} />
           
-          <Route path="/legal" element={
+          <Route path="/reviewer/workspace" element={<ReviewerWorkspace />} />
+
+          <Route path="/reviewer/dashboard" element={
             <Dashboard
               contracts={contractsList}
-              trendData={trendData}
-              deptData={deptData}
-              countryData={countryData}
-              clauseData={clauseData}
-              clauseTypeRisk={clauseTypeRisk}
+              globalRisks={globalRisks}
               riskTab={riskTab}
               onSetRiskTab={setRiskTab}
               activeNav={currentNav}
@@ -226,43 +232,30 @@ export default function App() {
             />
           } />
           
-          <Route path="/legal/workspace" element={<ReviewerWorkspace />} />
-          <Route path="/legal/risk" element={
+          <Route path="/reviewer/risk" element={
             <Dashboard
               contracts={contractsList}
-              trendData={trendData}
-              deptData={deptData}
-              countryData={countryData}
-              clauseData={clauseData}
-              clauseTypeRisk={clauseTypeRisk}
+              globalRisks={globalRisks}
               riskTab={riskTab}
               onSetRiskTab={setRiskTab}
               activeNav={currentNav}
               onOpenExportModal={() => setModalType('export')}
             />
           } />
-          <Route path="/legal/clause" element={
+          <Route path="/reviewer/clause" element={
             <Dashboard
               contracts={contractsList}
-              trendData={trendData}
-              deptData={deptData}
-              countryData={countryData}
-              clauseData={clauseData}
-              clauseTypeRisk={clauseTypeRisk}
+              globalRisks={globalRisks}
               riskTab={riskTab}
               onSetRiskTab={setRiskTab}
               activeNav={currentNav}
               onOpenExportModal={() => setModalType('export')}
             />
           } />
-          <Route path="/legal/business" element={
+          <Route path="/reviewer/business" element={
             <Dashboard
               contracts={contractsList}
-              trendData={trendData}
-              deptData={deptData}
-              countryData={countryData}
-              clauseData={clauseData}
-              clauseTypeRisk={clauseTypeRisk}
+              globalRisks={globalRisks}
               riskTab={riskTab}
               onSetRiskTab={setRiskTab}
               activeNav={currentNav}
@@ -284,13 +277,13 @@ export default function App() {
   );
 }
 
-function getCurrentNav(pathname: string, role: 'admin' | 'legal' | null): string {
-  if (role === 'legal') {
-    if (pathname === '/legal/workspace') return 'workspace';
-    if (pathname === '/legal/risk') return 'risk';
-    if (pathname === '/legal/clause') return 'clause';
-    if (pathname === '/legal/business') return 'business';
-    return 'dashboard';
+function getCurrentNav(pathname: string, role: 'admin' | 'reviewer' | null): string {
+  if (role === 'reviewer') {
+    if (pathname.includes('/risk')) return 'risk';
+    if (pathname.includes('/clause')) return 'clause';
+    if (pathname.includes('/business')) return 'business';
+    if (pathname.includes('/dashboard')) return 'dashboard';
+    return 'workspace';
   }
 
   if (pathname.includes('/audit')) return 'audit';

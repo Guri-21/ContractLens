@@ -11,11 +11,7 @@ import {
 
 interface DashboardProps {
   contracts: Contract[];
-  trendData: TrendRecord[];
-  deptData: DeptRecord[];
-  countryData: CountryRecord[];
-  clauseData: ClauseRecord[];
-  clauseTypeRisk: ClauseTypeRiskRecord[];
+  globalRisks?: any[];
   riskTab: 'dept' | 'country' | 'clause';
   onSetRiskTab: (tab: 'dept' | 'country' | 'clause') => void;
   activeNav: string;
@@ -24,11 +20,7 @@ interface DashboardProps {
 
 export default function Dashboard({
   contracts,
-  trendData,
-  deptData,
-  countryData,
-  clauseData,
-  clauseTypeRisk,
+  globalRisks = [],
   riskTab,
   onSetRiskTab,
   activeNav,
@@ -41,6 +33,69 @@ export default function Dashboard({
   const pending = contracts.filter((c) => c.status === 'queued' || c.status === 'processing').length;
   const highRisk = scored.filter((c) => c.level === 'high' || c.level === 'critical').length;
   const avg = scored.length > 0 ? Math.round(scored.reduce((a, c) => a + c.score, 0) / scored.length) : 0;
+
+  // Dynamically compute aggregated data
+  const deptMap: Record<string, { count: number, totalScore: number }> = {};
+  const countryMap: Record<string, { count: number, totalScore: number }> = {};
+  contracts.forEach(c => {
+    if (!deptMap[c.dept]) deptMap[c.dept] = { count: 0, totalScore: 0 };
+    deptMap[c.dept].count += 1;
+    if (c.score !== null) deptMap[c.dept].totalScore += c.score;
+
+    if (!countryMap[c.country]) countryMap[c.country] = { count: 0, totalScore: 0 };
+    countryMap[c.country].count += 1;
+    if (c.score !== null) countryMap[c.country].totalScore += c.score;
+  });
+
+  const deptData: DeptRecord[] = Object.keys(deptMap).map(k => ({
+    label: k,
+    contracts: deptMap[k].count,
+    avgRisk: deptMap[k].count > 0 && deptMap[k].totalScore > 0 ? Math.round(deptMap[k].totalScore / deptMap[k].count) : 0
+  })).sort((a, b) => b.contracts - a.contracts);
+
+  const countryData: CountryRecord[] = Object.keys(countryMap).map(k => ({
+    label: k,
+    contracts: countryMap[k].count,
+    avgRisk: countryMap[k].count > 0 && countryMap[k].totalScore > 0 ? Math.round(countryMap[k].totalScore / countryMap[k].count) : 0
+  })).sort((a, b) => b.contracts - a.contracts);
+
+  const trendMap: Record<string, { count: number, totalScore: number }> = {};
+  scored.forEach(c => {
+    const month = new Date(c.iso).toLocaleString('en-US', { month: 'short' });
+    if (!trendMap[month]) trendMap[month] = { count: 0, totalScore: 0 };
+    trendMap[month].count += 1;
+    trendMap[month].totalScore += c.score;
+  });
+  const trendData: TrendRecord[] = Object.keys(trendMap).map(k => ({
+    m: k,
+    v: Math.round(trendMap[k].totalScore / trendMap[k].count)
+  }));
+  if (trendData.length === 0) {
+    trendData.push({ m: 'Current', v: 0 });
+    trendData.unshift({ m: 'Prev', v: 0 });
+  } else if (trendData.length === 1) {
+    trendData.unshift({ m: 'Prev', v: trendData[0].v });
+  }
+
+  const clauseMap: Record<string, { flagged: number, critical: number }> = {};
+  globalRisks.forEach(r => {
+    const t = r.clauseType || 'General';
+    if (!clauseMap[t]) clauseMap[t] = { flagged: 0, critical: 0 };
+    clauseMap[t].flagged += 1;
+    if (r.riskLevel === 'critical') clauseMap[t].critical += 1;
+  });
+  const clauseData: ClauseRecord[] = Object.keys(clauseMap).map(k => ({
+    label: k,
+    flagged: clauseMap[k].flagged,
+    critical: clauseMap[k].critical
+  })).sort((a, b) => b.flagged - a.flagged);
+
+  const clauseTypeRisk: ClauseTypeRiskRecord[] = Object.keys(clauseMap).map(k => {
+    return {
+      label: k,
+      avgRisk: clauseMap[k].critical > 0 ? 80 : 40
+    };
+  }).sort((a, b) => b.avgRisk - a.avgRisk);
 
   // Donut chart calculations
   const levels = ['low', 'medium', 'high', 'critical'] as const;

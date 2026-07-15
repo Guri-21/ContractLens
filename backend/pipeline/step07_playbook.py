@@ -51,14 +51,15 @@ Clause ({clause.get("documentName", "")}, section {clause.get("sectionNumber", "
 Identify which playbook rules this clause VIOLATES, not just differs from.
 Return ONLY JSON:
 {{
-  "violations": [
-    {{
-      "rule": "<exact rule text>",
-      "reason": "<one sentence explanation>",
-      "riskLevel": "low"
-    }}
-  ]
-}}
+    "violations": [
+      {{
+        "rule": "<exact rule text>",
+        "reason": "<one sentence explanation>",
+        "riskLevel": "low",
+        "confidence": 95.0
+      }}
+    ]
+  }}
 Allowed riskLevel values: low, medium, high, critical.
 Return an empty violations array if none.
 """
@@ -87,6 +88,9 @@ Return an empty violations array if none.
                 ],
                 "missingDocuments": None,
                 "redline": None,
+                "contradictionType": "playbook_violation",
+                "confidence": float(violation.get("confidence", 90.0)),
+                "comparisonText": None,
             }
         )
     return findings

@@ -49,8 +49,9 @@ def _contradict_hf(a: dict, b: dict, cfg: dict) -> dict | None:
         hypothesis_template="{}",
     )
     label_scores = dict(zip(output["labels"], output["scores"]))
-    if label_scores.get("contradiction", 0) > 0.6:
-        return _build_finding(a, b, "Conflicting terms detected by NLI model.")
+    contradiction_score = label_scores.get("contradiction", 0)
+    if contradiction_score > 0.6:
+        return _build_finding(a, b, "Conflicting terms detected by NLI model.", round(contradiction_score * 100, 2))
     return None
 
 
@@ -67,14 +68,20 @@ Do these clauses contradict each other?
 Return ONLY JSON:
 {{
   "contradicts": true,
-  "reason": "<one sentence explanation>"
+  "reason": "<one sentence explanation>",
+  "confidence": 95.5
 }}
 Use false for "contradicts" if they are compatible or merely different.
 """
     try:
         data = complete_json(prompt, max_tokens=160)
         if data.get("contradicts"):
-            return _build_finding(a, b, data.get("reason", "Contradiction detected."))
+            return _build_finding(
+                a, 
+                b, 
+                data.get("reason", "Contradiction detected."), 
+                float(data.get("confidence", 90.0))
+            )
     except Exception:
         pass
     return None
@@ -97,7 +104,7 @@ def _match_by_type(doc_a: list[dict], doc_b: list[dict]) -> list[tuple[dict, dic
     return pairs
 
 
-def _build_finding(a: dict, b: dict, reason: str) -> dict:
+def _build_finding(a: dict, b: dict, reason: str, confidence: float) -> dict:
     return {
         "id": f"r_{uuid.uuid4().hex[:8]}",
         "clauseId": a["id"],
@@ -121,4 +128,10 @@ def _build_finding(a: dict, b: dict, reason: str) -> dict:
         ],
         "missingDocuments": None,
         "redline": None,
+        "contradictionType": "msa_conflict",
+        "confidence": confidence,
+        "comparisonText": {
+            "sowText": a["text"],
+            "msaText": b["text"],
+        }
     }

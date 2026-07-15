@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-type RoleKey = 'admin' | 'legal';
+type RoleKey = 'admin' | 'reviewer';
 
 interface RoleLandingProps {
   onSelectRole: (role: RoleKey) => void;
@@ -27,10 +27,10 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       style: { border: '1px solid #334155' }
     },
     {
-      key: 'legal' as const,
+      key: 'reviewer' as const,
       tag: 'Review & Monitor',
-      name: 'Legal & Compliance',
-      desc: 'Aggregate risk posture, analytics, plus individual contract review and redlining.',
+      name: 'Legal Advisor',
+      desc: 'Upload SOWs, analyze against MSAs, redline, and aggregate portfolio risk analytics.',
       cta: 'Enter workspace →',
       disabled: false,
       tagColor: '#38BDF8',
@@ -41,7 +41,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
 
   const defaultCredentials: Record<string, { u: string; p: string; label: string }> = {
     admin: { u: 'admin@contractlens.com', p: 'admin123', label: 'Admin' },
-    legal: { u: 'compliance@contractlens.com', p: 'compliance123', label: 'Legal & Compliance' }
+    reviewer: { u: 'reviewer@contractlens.com', p: 'reviewer123', label: 'Legal Advisor' }
   };
 
   const handleTileClick = async (tile: typeof roleTiles[number]) => {
@@ -89,10 +89,10 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       const mappedRole = data.role.toLowerCase(); // e.g. "admin", "legal reviewer", "compliance officer"
       let expectedRoleKey = '';
       if (mappedRole === 'admin') expectedRoleKey = 'admin';
-      else expectedRoleKey = 'legal'; // treat both legal reviewer and compliance officer as 'legal'
+      else if (mappedRole === 'legal reviewer' || mappedRole === 'compliance officer') expectedRoleKey = 'reviewer';
 
       if (expectedRoleKey !== roleKey) {
-        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${roleKey === 'admin' ? 'Admin' : 'Legal & Compliance'} workspace.`);
+        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${roleKey} workspace.`);
       }
 
       // Store JWT token details in localStorage
@@ -170,7 +170,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
               </button>
             </div>
             <h3 className="font-serif text-xl text-[#F8FAFC] mb-1.5">
-              Enter {loginRole === 'admin' ? 'Admin' : 'Legal & Compliance'} Workspace
+              Enter {defaultCredentials[loginRole]?.label} Workspace
             </h3>
             <p className="text-[#94A3B8] text-xs leading-normal mb-5">
               Sign in with your credentials to access this protected area.
@@ -242,3 +242,4 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
     </div>
   );
 }
+

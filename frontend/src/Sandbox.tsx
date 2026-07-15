@@ -10,12 +10,6 @@ const cyclicClauses = [...mockClauses];
 cyclicClauses[0] = { ...cyclicClauses[0], references: ['clause-2'] };
 cyclicClauses[1] = { ...cyclicClauses[1], references: ['clause-1'] }; // cycle!
 
-const newClausesMock = [
-  ...mockClauses.slice(0, 2), // Keep first two
-  { ...mockClauses[2], text: "MODIFIED TEXT: This is a simulated modified clause for version comparison." }, // Modify third
-  { id: 'clause-4', documentId: 'doc-msa', documentName: 'MSA', documentType: 'MSA' as const, text: "This is a brand new clause added in version 2.", references: [], overrides: [] } // Add fourth
-];
-
 export const Sandbox: React.FC = () => {
   const [activeTab, setActiveTab] = useState('graph');
 
@@ -40,10 +34,9 @@ export const Sandbox: React.FC = () => {
         {activeTab === 'graph' && (
           <div>
             <h2 className="text-xl font-bold mb-4">Dependency Graph (with mock cycle)</h2>
-            <div className="h-[500px]">
-              <DependencyGraph clauses={cyclicClauses} />
-            </div>
-          </div>
+            <div className="mb-12 h-96">
+        <DependencyGraph clauses={mockClauses} risks={[]} />
+      </div>      </div>
         )}
 
         {activeTab === 'pdf' && (
@@ -68,7 +61,9 @@ export const Sandbox: React.FC = () => {
         {activeTab === 'version' && (
           <div>
             <h2 className="text-xl font-bold mb-4">Version Comparison</h2>
-            <VersionComparison oldClauses={mockClauses} newClauses={newClausesMock} />
+      <div className="mb-12">
+        <VersionComparison clause={mockClauses[0]} />
+      </div>
           </div>
         )}
 

@@ -18,7 +18,14 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
+      const selectedFiles = Array.from(e.target.files).filter(f => 
+        f.name.endsWith('.pdf') || f.name.endsWith('.docx')
+      );
+      
+      if (selectedFiles.length !== e.target.files.length) {
+        alert("Only .pdf and .docx files are supported.");
+      }
+
       setFiles((currentFiles) => {
         const byName = new Map(currentFiles.map((file) => [file.name, file]));
         selectedFiles.forEach((file) => byName.set(file.name, file));
@@ -40,8 +47,11 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
         documentIds.push(res.documentId);
       }
       
+      // Simulate granular steps since backend is a single POST request right now
+      setStatus('parsing');
+      await new Promise(r => setTimeout(r, 1500));
+      
       setStatus('analyzing');
-      // 2. Trigger analysis
       const data = await fetchBackendAnalyze(documentIds, playbook, country);
       
       setStatus('done');
@@ -63,12 +73,13 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
         {/* Upload Area */}
         <div className="border-2 border-dashed border-indigo-200 rounded-xl p-8 text-center bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
           <UploadCloud className="mx-auto h-12 w-12 text-indigo-400 mb-4" />
-          <div className="flex text-sm text-gray-600 justify-center">
+          <div className="flex text-sm text-gray-600 justify-center flex-col items-center">
             <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-3 py-1 shadow-sm border border-gray-200">
               <span>Select files</span>
-              <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} />
+              <input id="file-upload" name="file-upload" type="file" accept=".pdf,.docx" className="sr-only" multiple onChange={handleFileChange} />
             </label>
-            <p className="pl-2 pt-1">or drag and drop (Max 2)</p>
+            <p className="mt-2">or drag and drop (Max 2)</p>
+            <p className="text-xs text-gray-400 mt-1">PDF or DOCX up to 10MB</p>
           </div>
         </div>
 

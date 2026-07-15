@@ -63,4 +63,7 @@ def _not_evaluated_finding(clause: dict, missing_docs: list[str]) -> dict:
         ],
         "missingDocuments": missing_docs,
         "redline": None,
+        "contradictionType": None,
+        "confidence": 100.0,
+        "comparisonText": None,
     }
