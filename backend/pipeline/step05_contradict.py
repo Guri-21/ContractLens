@@ -70,8 +70,9 @@ def _contradict_hf(a: dict, b: dict, cfg: dict) -> dict | None:
         hypothesis_template="{}",
     )
     label_scores = dict(zip(output["labels"], output["scores"]))
-    if label_scores.get("contradiction", 0) > 0.6:
-        return _build_finding(a, b, "Conflicting terms detected by NLI model.")
+    contradiction_score = label_scores.get("contradiction", 0)
+    if contradiction_score > 0.6:
+        return _build_finding(a, b, "Conflicting terms detected by NLI model.", round(contradiction_score * 100, 2))
     return None
 
 
@@ -92,7 +93,12 @@ def _contradict_llm_batch(pairs: list[tuple[dict, dict]]) -> list[dict]:
 Return ONLY JSON:
 {{
   "results": [
-    {{"index": 0, "contradicts": true, "reason": "<one sentence>"}}
+    {{
+      "index": 0,
+      "contradicts": true,
+      "reason": "<one sentence>",
+      "confidence": 95.5
+    }}
   ]
 }}
 Use false for "contradicts" if they are compatible or merely different.
@@ -110,6 +116,7 @@ Use false for "contradicts" if they are compatible or merely different.
                     left,
                     right,
                     result.get("reason", "Contradiction detected."),
+                    float(result.get("confidence", 90.0)),
                 )
             )
     return findings
@@ -136,7 +143,7 @@ def _match_by_type(
     return pairs
 
 
-def _build_finding(a: dict, b: dict, reason: str) -> dict:
+def _build_finding(a: dict, b: dict, reason: str, confidence: float) -> dict:
     return {
         "id": f"r_{uuid.uuid4().hex[:8]}",
         "clauseId": a["id"],
@@ -160,4 +167,10 @@ def _build_finding(a: dict, b: dict, reason: str) -> dict:
         ],
         "missingDocuments": None,
         "redline": None,
+        "contradictionType": "msa_conflict",
+        "confidence": confidence,
+        "comparisonText": {
+            "sowText": a["text"],
+            "msaText": b["text"],
+        }
     }

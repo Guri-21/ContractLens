@@ -158,3 +158,90 @@ def _infer_document_type(filename: str) -> str:
         if doc_type.lower() in name:
             return doc_type
     return "MSA"
+
+class DocumentStatusUpdate(BaseModel):
+    status: str
+
+@router.put("/{document_id}/status")
+async def update_document_status(
+    document_id: str,
+    request: DocumentStatusUpdate,
+    db: Prisma = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    doc = await db.document.find_unique(where={"id": document_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    updated_doc = await db.document.update(
+        where={"id": document_id},
+        data={"status": request.status}
+    )
+
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id, 
+            "action": f"UPDATE_DOCUMENT_STATUS_{request.status.upper()}", 
+            "target_type": "Document", 
+            "target_id": document_id
+        }
+    )
+
+    # If approved, we could also create an Approval record
+    if request.status.lower() == "approved":
+        await db.approval.create(
+            data={
+                "document_id": document_id,
+                "approved_by_id": current_user.id,
+                "comments": "Approved via Legal Reviewer workspace"
+            }
+        )
+
+    return {"status": "success", "new_status": updated_doc.status}
+
+
+class ClauseVersionCreate(BaseModel):
+    text: str
+    changeType: str
+
+@router.post("/api/clauses/{clause_id}/version")
+async def create_clause_version(
+    clause_id: str,
+    request: ClauseVersionCreate,
+    db: Prisma = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    clause = await db.clause.find_unique(where={"id": clause_id}, include={"versions": True})
+    if not clause:
+        raise HTTPException(status_code=404, detail="Clause not found")
+
+    new_version_number = 1
+    if clause.versions:
+        new_version_number = max([v.version_number for v in clause.versions]) + 1
+
+    version = await db.clauseversion.create(
+        data={
+            "clause_id": clause_id,
+            "version_number": new_version_number,
+            "text": request.text,
+            "edited_by_id": current_user.id,
+            "change_type": request.changeType
+        }
+    )
+
+    # Update clause text to latest version
+    await db.clause.update(
+        where={"id": clause_id},
+        data={"text": request.text}
+    )
+    
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id, 
+            "action": f"CLAUSE_VERSION_{request.changeType.upper()}", 
+            "target_type": "Clause", 
+            "target_id": clause_id
+        }
+    )
+
+    return {"status": "success", "version_id": version.id, "version_number": version.version_number}

@@ -22,6 +22,7 @@ model User {
   role            Role       @relation(fields: [role_id], references: [id])
   documents       Document[]
   audit_logs      AuditLog[]
+  notifications   Notification[]
 }
 
 model Document {
@@ -30,15 +31,19 @@ model Document {
   document_type  String
   status         String
   file_path      String
-  uploaded_by_id String
-  uploader       User     @relation(fields: [uploaded_by_id], references: [id])
-  clauses        Clause[]
+  uploaded_by_id         String
+  uploader               User                     @relation(fields: [uploaded_by_id], references: [id])
+  clauses                Clause[]
+  missing_clauses        MissingMandatoryClause[]
+  country_compliance     CountryLawCompliance[]
+  financial_summary      FinancialSummary?
+  approval               Approval?
 }
 
 model Clause {
-  id             String        @id
+  id             String          @id
   document_id    String
-  document       Document      @relation(fields: [document_id], references: [id])
+  document       Document        @relation(fields: [document_id], references: [id])
   document_name  String
   document_type  String
   section_number String?
@@ -46,10 +51,13 @@ model Clause {
   page           Int?
   text           String
   clause_type    String?
-  references     Json?         @default("[]")
-  overrides      Json?         @default("[]")
+  references     Json?           @default("[]")
+  overrides      Json?           @default("[]")
   table_data     Json?
+  entities       Json?           @default("[]")
+  embedding_id   String?
   risks          RiskFinding[]
+  versions       ClauseVersion[]
 }
 
 model RiskFinding {
@@ -63,6 +71,9 @@ model RiskFinding {
   evidence               Json?   @default("[]")
   missing_documents      Json?
   redline                Json?
+  contradiction_type     String?
+  confidence             Float?
+  comparison_text        Json?
 }
 
 model PlaybookRule {
@@ -88,4 +99,66 @@ model AuditLog {
   target_type String
   target_id   String?
   timestamp   DateTime @default(now())
+}
+
+model ClauseVersion {
+  id             String   @id @default(uuid())
+  clause_id      String
+  clause         Clause   @relation(fields: [clause_id], references: [id])
+  version_number Int
+  text           String
+  edited_by      String?
+  edited_at      DateTime @default(now())
+  change_type    String
+}
+
+model MissingMandatoryClause {
+  id          String   @id @default(uuid())
+  document_id String
+  document    Document @relation(fields: [document_id], references: [id])
+  clause_name String
+  present     Boolean
+}
+
+model CountryLawCompliance {
+  id          String   @id @default(uuid())
+  document_id String
+  document    Document @relation(fields: [document_id], references: [id])
+  law_name    String
+  status      String
+  details     String?
+}
+
+model FinancialSummary {
+  id              String   @id @default(uuid())
+  document_id     String   @unique
+  document        Document @relation(fields: [document_id], references: [id])
+  contract_value  String?
+  penalty         String?
+  payment_terms   String?
+  liability_cap   String?
+  warranty_period String?
+}
+
+model Approval {
+  id               String    @id @default(uuid())
+  document_id      String    @unique
+  document         Document  @relation(fields: [document_id], references: [id])
+  status           String
+  reason           String?
+  reviewer_notes   String?
+  internal_remarks String?
+  decided_by       String?
+  decided_at       DateTime?
+}
+
+model Notification {
+  id                  String   @id @default(uuid())
+  user_id             String
+  user                User     @relation(fields: [user_id], references: [id])
+  type                String
+  message             String
+  created_at          DateTime @default(now())
+  read                Boolean  @default(false)
+  related_document_id String?
 }
