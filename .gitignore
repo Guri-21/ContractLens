@@ -14,3 +14,6 @@ models/
 *.pt
 *.pth
 *.ckpt
+
+# Local progress guide
+progress_guide.md
