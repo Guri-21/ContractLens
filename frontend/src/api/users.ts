@@ -1,47 +1,68 @@
 import { API_BASE_URL } from './client';
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-
-export interface UserResponse {
+export interface UserDTO {
   id: string;
   email: string;
   role: string;
-  status?: string; // Missing from backend right now, optional for integration
+  name?: string;
+  status?: string;
+  lastActive?: string;
+  password?: string;
 }
 
-export const fetchUsers = async (): Promise<UserResponse[]> => {
-  const res = await fetch(`${API_BASE_URL}/api/users/`, {
-    headers: getHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json();
-};
+function getHeaders() {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
-export const createUser = async (data: { email: string; role_id?: string; password?: string }) => {
-  // This endpoint might not exist yet, keeping it integration-ready
+export async function fetchUsers(): Promise<UserDTO[]> {
+  const res = await fetch(`${API_BASE_URL}/api/users/`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch backend users');
+  return res.json();
+}
+
+export async function createUser(user: UserDTO): Promise<UserDTO> {
   const res = await fetch(`${API_BASE_URL}/api/users/`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      email: user.email,
+      role: user.role,
+      password: user.password || 'password123'
+    })
   });
-  if (!res.ok) throw new Error('Failed to create user');
+  if (!res.ok) throw new Error('Failed to create user in backend');
   return res.json();
-};
+}
 
-export const deleteUser = async (id: string) => {
+export async function updateUser(id: string, user: UserDTO): Promise<UserDTO> {
+  const res = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      email: user.email,
+      role: user.role
+    })
+  });
+  if (!res.ok) throw new Error('Failed to update user in backend');
+  return res.json();
+}
+
+export async function deleteUser(id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/users/${id}`, {
     method: 'DELETE',
-    headers: getHeaders(),
+    headers: getHeaders()
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || 'Failed to delete user');
+    throw new Error(data.detail || 'Failed to delete user in backend');
   }
-  return res.json();
-};
+}

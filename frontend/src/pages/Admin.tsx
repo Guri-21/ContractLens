@@ -2,19 +2,17 @@ import {
   PlaybookVersion,
   User,
   Contract,
-  RuleSet,
   riskMeta,
   statusMeta,
   roleMeta,
   initials
 } from '../mock/data';
+import PlaybookEditor from '../components/admin/PlaybookEditor';
 
 interface AdminProps {
   playbookVersions: PlaybookVersion[];
   onSetActivePlaybook: (id: string) => void;
   onOpenPlaybookModal: () => void;
-  ruleSets: RuleSet[];
-  onOpenCountryModal: () => void;
   usersList: User[];
   onOpenUserModal: () => void;
   onEditUser: (user: User) => void;
@@ -34,8 +32,6 @@ export default function Admin({
   playbookVersions,
   onSetActivePlaybook,
   onOpenPlaybookModal,
-  ruleSets,
-  onOpenCountryModal,
   usersList,
   onOpenUserModal,
   onEditUser,
@@ -230,107 +226,13 @@ export default function Admin({
               </table>
             )}
           </div>
-        </div>
-      )}
 
-      {/* ==================== 2. ADMIN: COUNTRY RULES ==================== */}
-      {activeNav === 'country' && (
-        <div className="animate-cl-rise">
-          <div className="flex flex-col sm:flex-row justify-between items-end mb-6.5 gap-4">
-            <div>
-              <div className="font-mono text-[11px] tracking-[0.16em] text-accent-text uppercase mb-2">
-                Administration
-              </div>
-              <h1 className="font-serif font-normal text-[32px] m-0 text-[#0F172A]">
-                Country Compliance Rules
-              </h1>
-              <p className="text-[#64748B] text-sm mt-1.5">
-                Manage the jurisdiction rule sets applied during review.
-              </p>
-            </div>
-            <button
-              onClick={onOpenCountryModal}
-              className="bg-accent hover:bg-accent-hover text-white font-semibold text-xs px-4.5 py-2.5 rounded cursor-pointer transition-colors"
-            >
-              Replace rule set
-            </button>
-          </div>
-
-          <div className="flex gap-5 mb-5.5 flex-wrap">
-            <div className="flex-[2] min-w-[340px] bg-[#0F172A] text-[#F8FAFC] rounded p-6 px-6.5">
-              <div className="font-mono text-[11px] tracking-[0.12em] text-accent mb-2.5 uppercase font-medium">
-                Active Jurisdiction
-              </div>
-              <div className="font-serif text-[28px] mb-1">United States</div>
-              <div className="text-sm text-[#94A3B8]">Federal statutes + Delaware state law</div>
-              <div className="flex gap-7 mt-5.5">
-                <div>
-                  <div className="font-serif text-2xl">78</div>
-                  <div className="text-[11px] text-[#94A3B8] tracking-[0.06em]">TOTAL RULES</div>
-                </div>
-                <div>
-                  <div className="font-serif text-2xl">5</div>
-                  <div className="text-[11px] text-[#94A3B8] tracking-[0.06em]">RULE SETS</div>
-                </div>
-                <div>
-                  <div className="font-serif text-2xl">Jun 18</div>
-                  <div className="text-[11px] text-[#94A3B8] tracking-[0.06em]">LAST UPDATED</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-[260px] bg-accent-soft border border-[#E2E8F0] rounded p-5 px-5.5 flex flex-col justify-center">
-              <div className="text-xl mb-2">⚖</div>
-              <div className="text-[13.5px] leading-relaxed text-accent-text">
-                <strong>One active jurisdiction at a time.</strong> Replacing the rule set swaps the entire jurisdiction — the platform does not evaluate multiple jurisdictions concurrently.
-              </div>
-            </div>
-          </div>
-
-          {/* Rule Sets Table */}
-          <div className="bg-white border border-[#E2E8F0] rounded overflow-hidden">
-            <div className="p-3.5 px-5 border-b border-[#E2E8F0] font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase">
-              Rule sets • United States
-            </div>
-            {ruleSets.length === 0 ? (
-              <div className="bg-white border-t border-[#E2E8F0] p-10 flex flex-col items-center justify-center text-center">
-                <div className="text-4xl mb-3 opacity-50">⚖️</div>
-                <h3 className="text-lg font-medium text-slate-800 mb-1">No rule sets found</h3>
-                <p className="text-slate-500 text-sm max-w-sm">
-                  Add compliance rules to evaluate contracts against jurisdictional regulations.
-                </p>
-              </div>
-            ) : (
-              <table className="w-full border-collapse text-[13.5px]">
-                <thead>
-                  <tr className="text-left text-[#64748B] text-[11px] tracking-[0.08em] uppercase border-b border-[#E2E8F0]">
-                    <th className="p-[11px] px-5 font-semibold">Rule set</th>
-                    <th className="p-[11px] px-5 font-semibold">Category</th>
-                    <th className="p-[11px] px-5 font-semibold">Rules</th>
-                    <th className="p-[11px] px-5 font-semibold">Updated</th>
-                    <th className="p-[11px] px-5 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ruleSets.map((r) => (
-                    <tr key={r.name} className="border-t border-[#F1F5F9] first:border-t-0">
-                      <td className="p-3.5 px-5 font-semibold text-[#0F172A]">{r.name}</td>
-                      <td className="p-3.5 px-5 text-[#475569]">{r.category}</td>
-                      <td className="p-3.5 px-5 text-[#475569]">{r.rules}</td>
-                      <td className="p-3.5 px-5 text-[#475569]">{r.updated}</td>
-                      <td className="p-3.5 px-5">
-                        <span className="bg-[#E9F1EC] text-[#3F6B52] text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap">
-                          Enforced
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          <div className="mt-8">
+            <PlaybookEditor />
           </div>
         </div>
       )}
+
 
       {/* ==================== 3. ADMIN: USERS ==================== */}
       {activeNav === 'users' && (

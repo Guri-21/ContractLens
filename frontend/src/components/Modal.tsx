@@ -173,6 +173,9 @@ export default function Modal({ modalType, onClose, onSubmit, initialData }: Mod
           {/* COUNTRY COMPLIANCE RULES */}
           {modalType === 'country' && (
             <>
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded p-2.5 mb-3 text-xs leading-relaxed">
+                ⚠️ **Notice:** Swapping compliance rules is currently not supported by the backend pipeline. Action will modify local preview rules only.
+              </div>
               <div className="bg-accent-soft rounded p-3.5 text-[12.5px] text-accent-text leading-relaxed mb-4">
                 Replacing the rule set retires the current United States set and activates the new upload. Only one jurisdiction is enforced at a time.
               </div>

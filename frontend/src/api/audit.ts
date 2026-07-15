@@ -1,17 +1,30 @@
 import { API_BASE_URL } from './client';
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+export interface AuditLogDTO {
+  id: string;
+  user_id: string;
+  action: string;
+  target_type: string;
+  target_id?: string | null;
+  timestamp: string;
+  user?: {
+    email: string;
+    role?: {
+      name: string;
+    };
   };
-};
+}
 
-export const fetchAuditLogs = async () => {
-  const res = await fetch(`${API_BASE_URL}/api/audit/`, {
-    headers: getHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch audit logs');
+export async function fetchAuditLogs(): Promise<AuditLogDTO[]> {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE_URL}/api/audit/`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch backend audit logs');
   return res.json();
-};
+}
