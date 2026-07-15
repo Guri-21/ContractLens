@@ -4,11 +4,13 @@ from typing import List, Optional
 from prisma import Json, Prisma
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
+from app.document_workflow import validate_reviewer_upload_type
 from pydantic import BaseModel
 import os
 import json
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+ADMIN_UPLOAD_DOCUMENT_TYPE = "MSA"
 
 class AnalyzeRequest(BaseModel):
     playbookId: str = ""
@@ -41,12 +43,37 @@ def _document_access_filter(current_user, document_ids: list[str] | None = None)
         return {}
     return filters[0] if len(filters) == 1 else {"AND": filters}
 
+
+def normalize_reviewer_upload_type(document_type: str) -> str:
+    return validate_reviewer_upload_type(document_type.upper())
+
+
+async def _validate_reviewer_assignment(db: Prisma, assigned_to_id: Optional[str]) -> None:
+    if assigned_to_id is None:
+        return
+
+    assignee = await db.user.find_unique(
+        where={"id": assigned_to_id},
+        include={"role": True},
+    )
+    if not assignee or not assignee.role or assignee.role.name != "Legal Reviewer":
+        raise HTTPException(
+            status_code=422,
+            detail="Documents can only be assigned to Legal Reviewers",
+        )
+
 @router.post("/upload")
 async def upload_document(
-    file: UploadFile = File(...), 
-    db: Prisma = Depends(get_db), 
+    file: UploadFile = File(...),
+    document_type: str = Form(...),
+    db: Prisma = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
+    try:
+        document_type = normalize_reviewer_upload_type(document_type)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.filename)
@@ -56,7 +83,7 @@ async def upload_document(
     doc = await db.document.create(
         data={
             "name": file.filename, 
-            "document_type": _infer_document_type(file.filename), 
+            "document_type": document_type,
             "status": "pending", 
             "file_path": file_path, 
             "uploaded_by_id": current_user.id
@@ -84,6 +111,8 @@ async def admin_upload_document(
     existing = await db.document.find_first(where={"name": file.filename})
     if existing:
         raise HTTPException(status_code=400, detail="A document with this name already exists")
+
+    await _validate_reviewer_assignment(db, assigned_to_id)
         
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
@@ -94,7 +123,7 @@ async def admin_upload_document(
     doc = await db.document.create(
         data={
             "name": file.filename, 
-            "document_type": _infer_document_type(file.filename), 
+            "document_type": ADMIN_UPLOAD_DOCUMENT_TYPE,
             "status": "pending", 
             "file_path": file_path, 
             "uploaded_by_id": current_user.id,
@@ -114,7 +143,7 @@ async def admin_upload_document(
     return {"documentId": doc.id, "status": doc.status}
 
 class AssignRequest(BaseModel):
-    assigned_to_id: str
+    assigned_to_id: Optional[str] = None
 
 @router.post("/{document_id}/assign")
 async def assign_document(
@@ -123,6 +152,8 @@ async def assign_document(
     db: Prisma = Depends(get_db),
     current_user = Depends(require_role(["Admin"]))
 ):
+    await _validate_reviewer_assignment(db, request.assigned_to_id)
+
     doc = await db.document.update(
         where={"id": document_id},
         data={"assigned_to_id": request.assigned_to_id}

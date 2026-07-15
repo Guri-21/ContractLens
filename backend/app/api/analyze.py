@@ -9,15 +9,27 @@ from prisma import Json, Prisma
 from app.api.deps import require_role
 from app.api.documents import _document_access_filter
 from app.database import get_db
+from app.document_workflow import validate_analysis_package
 from pipeline.run_pipeline import run_analysis_pipeline
 
 router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
 
 class AnalyzeRequest(BaseModel):
-    documentIds: List[str]
+    msaDocumentId: str
+    sowDocumentId: str
+    supportingDocumentIds: List[str] = Field(default_factory=list)
     playbookId: str
     countryCode: str
+
+
+def validate_analysis_request_documents(documents_by_id: dict, request: AnalyzeRequest):
+    return validate_analysis_package(
+        documents_by_id.values(),
+        request.msaDocumentId,
+        request.sowDocumentId,
+        request.supportingDocumentIds,
+    )
 
 
 class AnalyzeDocumentRequest(BaseModel):
@@ -39,11 +51,20 @@ async def analyze_documents(
     db: Prisma = Depends(get_db),
     current_user=Depends(require_role(["Admin", "Legal Reviewer"])),
 ):
+    requested_ids = [
+        req.msaDocumentId,
+        req.sowDocumentId,
+        *req.supportingDocumentIds,
+    ]
+    unique_requested_ids = list(dict.fromkeys(requested_ids))
     docs = await db.document.find_many(
-        where=_document_access_filter(current_user, req.documentIds)
+        where=_document_access_filter(current_user, unique_requested_ids)
     )
-    if len(docs) != len(set(req.documentIds)):
-        raise HTTPException(status_code=404, detail="One or more documents were not found")
+    documents_by_id = {document.id: document for document in docs}
+    try:
+        package_documents = validate_analysis_request_documents(documents_by_id, req)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
     doc_dicts = [
         {
@@ -52,7 +73,7 @@ async def analyze_documents(
             "type": doc.document_type,
             "file_path": doc.file_path,
         }
-        for doc in docs
+        for doc in package_documents
     ]
 
     rules = await db.playbookrule.find_many(where={"is_active": True})
