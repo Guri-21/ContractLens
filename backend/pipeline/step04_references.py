@@ -1,62 +1,43 @@
 """
-Step 4 — Dependency / Reference Extraction (Claude agent)
-Finds clauses that reference, override, or nest inside others.
-Outputs: each clause gets references[] and overrides[] populated.
-"""
-import json
-import anthropic
-import os
-from .config import PIPELINE_CONFIG
+Step 4 - Dependency / Reference Extraction.
 
-_TRIGGER_PHRASES = [
-    "notwithstanding", "subject to", "except as provided",
-    "in case of conflict", "pursuant to", "as defined in",
-    "as set forth in", "in accordance with", "supersedes",
-    "overrides", "takes precedence",
-]
+Deterministically maps explicit section references to known clause IDs.
+"""
+
+import re
+
+_REFERENCE_RE = re.compile(
+    r"\b(?:section|clause|article|paragraph)\s+([0-9]{1,2}(?:\.[0-9]{1,2})*)\b",
+    re.IGNORECASE,
+)
+_OVERRIDE_PHRASES = ("notwithstanding", "supersedes", "overrides", "takes precedence")
 
 
 def extract_references(clauses: list[dict]) -> list[dict]:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    clause_index = {c["id"]: c for c in clauses}
-    id_list = [{"id": c["id"], "section": c.get("sectionNumber", ""), "title": c.get("title", "")} for c in clauses]
+    by_section = {
+        str(clause.get("sectionNumber")): clause["id"]
+        for clause in clauses
+        if clause.get("sectionNumber")
+    }
+
     results = []
     for clause in clauses:
-        if not _has_trigger(clause["text"]):
-            results.append(clause)
-            continue
-        prompt = f"""You are analyzing legal clause references.
-
-Available clauses (id + section):
-{json.dumps(id_list, indent=2)}
-
-Target clause ({clause["id"]}):
-\"\"\"{clause["text"][:600]}\"\"\"
-
-Return ONLY JSON:
-{{
-  "references": ["<clause_id>", ...],
-  "overrides":  ["<clause_id>", ...]
-}}
-- references: clause IDs this clause explicitly references or depends on
-- overrides:  clause IDs this clause supersedes or takes precedence over
-- Use empty arrays if none.
-"""
-        resp = client.messages.create(
-            model=PIPELINE_CONFIG["claude_model"],
-            max_tokens=256,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        try:
-            data = json.loads(resp.content[0].text)
-            refs = [r for r in data.get("references", []) if r in clause_index]
-            overrides = [r for r in data.get("overrides", []) if r in clause_index]
-        except Exception:
-            refs, overrides = [], []
+        text = clause.get("text") or ""
+        refs = _extract_reference_ids(text, by_section, clause["id"])
+        overrides = refs if _has_override_language(text) else []
         results.append({**clause, "references": refs, "overrides": overrides})
     return results
 
 
-def _has_trigger(text: str) -> bool:
-    t = text.lower()
-    return any(phrase in t for phrase in _TRIGGER_PHRASES)
+def _extract_reference_ids(text: str, by_section: dict[str, str], current_id: str) -> list[str]:
+    refs = []
+    for match in _REFERENCE_RE.finditer(text):
+        clause_id = by_section.get(match.group(1))
+        if clause_id and clause_id != current_id:
+            refs.append(clause_id)
+    return list(dict.fromkeys(refs))
+
+
+def _has_override_language(text: str) -> bool:
+    lowered = text.lower()
+    return any(phrase in lowered for phrase in _OVERRIDE_PHRASES)

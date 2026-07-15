@@ -17,7 +17,6 @@ export const InlineClauseEditor: React.FC<InlineClauseEditorProps> = ({
 
   const handleSaveAndAnalyze = () => {
     setIsAnalyzing(true);
-    // Stub the re-analysis call
     setTimeout(() => {
       setIsAnalyzing(false);
       onSave(text);
@@ -25,37 +24,52 @@ export const InlineClauseEditor: React.FC<InlineClauseEditorProps> = ({
   };
 
   return (
-    <div className="bg-blue-50/30 p-4 rounded-lg border border-blue-200 mt-2">
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="text-sm font-semibold text-blue-800">Edit Clause</h4>
+    <div className="bg-legal-bg border border-legal-focus/20 p-5 rounded-sm mb-8 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="font-mono text-xs uppercase tracking-widest text-legal-focus font-semibold border-b border-legal-focus/20 pb-1">Clause Revision Mode</h4>
       </div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        className="w-full h-32 p-3 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-gray-700"
-      />
-      <div className="flex justify-end space-x-2 mt-3">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase text-legal-meta">Original Text</span>
+          </div>
+          <div className="w-full h-48 p-3 text-sm bg-gray-50 border border-legal-border text-legal-meta font-body leading-relaxed overflow-y-auto">
+            {initialText}
+          </div>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase text-legal-focus font-bold">New Revision</span>
+          </div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full h-48 p-3 text-sm border border-legal-focus bg-legal-surface focus:ring-1 focus:ring-legal-focus focus:outline-none font-body text-legal-text resize-none leading-relaxed shadow-inner"
+          />
+        </div>
+      </div>
+      <div className="flex justify-end space-x-2 mt-5">
         <button
           onClick={onCancel}
           disabled={isAnalyzing}
-          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 text-[11px] font-mono font-medium text-legal-text bg-legal-surface border border-legal-border hover:bg-gray-50 disabled:opacity-50 uppercase tracking-widest transition-colors"
         >
-          Cancel
+          Discard
         </button>
         <button
           onClick={handleSaveAndAnalyze}
           disabled={isAnalyzing || text === initialText}
-          className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="flex items-center px-4 py-2 text-[11px] font-mono font-medium text-white bg-legal-focus hover:bg-blue-900 disabled:opacity-50 uppercase tracking-widest transition-colors"
         >
           {isAnalyzing ? (
             <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" />
               Re-analyzing...
             </>
           ) : (
             <>
-              <Save className="h-4 w-4 mr-2" />
-              Save & Re-run Analysis
+              <Save className="h-3.5 w-3.5 mr-2" />
+              Commit & Analyze
             </>
           )}
         </button>

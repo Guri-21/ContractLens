@@ -13,6 +13,9 @@ export const mockClauses: ClauseDTO[] = [
     clauseType: "payment_terms",
     references: [],
     overrides: [],
+    entities: [],
+    embeddingId: undefined,
+    versionHistory: [],
   },
   {
     id: "clause-2",
@@ -26,6 +29,9 @@ export const mockClauses: ClauseDTO[] = [
     clauseType: "payment_terms",
     references: ["clause-1"],
     overrides: ["clause-1"],
+    entities: [],
+    embeddingId: undefined,
+    versionHistory: [],
   },
   {
     id: "clause-3",
@@ -39,6 +45,9 @@ export const mockClauses: ClauseDTO[] = [
     clauseType: "liability",
     references: ["exhibit-a"],
     overrides: [],
+    entities: [],
+    embeddingId: undefined,
+    versionHistory: [],
   },
 ];
 
@@ -68,6 +77,12 @@ export const mockRiskFindings: RiskFindingDTO[] = [
       originalText: "Payment for services outlined in this SOW shall be due Net 30 days from invoice date.",
       suggestedText: "Payment for services outlined in this SOW shall be due Net 60 days from invoice date, consistent with the Master Service Agreement.",
     },
+    contradictionType: "msa_conflict",
+    confidence: 95.0,
+    comparisonText: {
+      sowText: "Payment for services outlined in this SOW shall be due Net 30 days from invoice date.",
+      msaText: "Client shall pay all undisputed invoices within Net 60 days of receipt."
+    }
   },
   {
     id: "risk-2",
@@ -84,5 +99,7 @@ export const mockRiskFindings: RiskFindingDTO[] = [
       },
     ],
     missingDocuments: ["Exhibit A"],
+    contradictionType: "missing_clause",
+    confidence: 100.0,
   },
 ];

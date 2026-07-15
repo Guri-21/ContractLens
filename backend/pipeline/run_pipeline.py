@@ -3,8 +3,6 @@ Top-level pipeline orchestrator.
 Called by the backend API: runAnalysisPipeline(documents, playbookId, countryCode)
 Each step is independently testable — import any step module directly for unit tests.
 """
-import os
-import uuid
 from .step01_parse      import parse_document
 from .step02_segment    import segment_clauses
 from .step03_classify   import classify_clauses
@@ -45,17 +43,22 @@ def run_analysis_pipeline(
         all_clauses.extend(clauses)
 
     # ── Step 5: cross-document contradiction detection ───────────
+    refusal_findings = apply_refusal(all_clauses, uploaded_names)
+    refused_clause_ids = {finding["clauseId"] for finding in refusal_findings}
+    eligible_clauses = [
+        clause for clause in all_clauses
+        if clause["id"] not in refused_clause_ids
+    ]
+
     contradiction_findings: list[dict] = []
     if len(documents) == 2:
-        doc_a_clauses = [c for c in all_clauses if c["documentId"] == documents[0]["id"]]
-        doc_b_clauses = [c for c in all_clauses if c["documentId"] == documents[1]["id"]]
+        doc_a_clauses = [c for c in eligible_clauses if c["documentId"] == documents[0]["id"]]
+        doc_b_clauses = [c for c in eligible_clauses if c["documentId"] == documents[1]["id"]]
         contradiction_findings = detect_contradictions(doc_a_clauses, doc_b_clauses)
 
     # ── Step 6: refusal engine — missing documents ───────────────
-    refusal_findings = apply_refusal(all_clauses, uploaded_names)
-
     # ── Step 7: playbook validation ──────────────────────────────
-    playbook_findings = validate_playbook(all_clauses, playbook_rules)
+    playbook_findings = validate_playbook(eligible_clauses, playbook_rules)
 
     # ── Merge all findings ───────────────────────────────────────
     all_findings = contradiction_findings + refusal_findings + playbook_findings

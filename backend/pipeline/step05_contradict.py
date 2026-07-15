@@ -1,110 +1,149 @@
 """
-Step 5 — Contradiction Detection
+Step 5 - Contradiction Detection.
 Compares same-type clauses across two documents and flags conflicts.
-
-SWAP: set env var CONTRADICTION_BACKEND=claude to use Claude instead of HuggingFace.
-      Set CONTRADICTION_MODEL=<hf-model-id> to change the NLI model.
 """
-import json
+
 import uuid
-import anthropic
-import os
+from collections import defaultdict
+from collections.abc import Callable
+
 from .config import PIPELINE_CONFIG
+from .llm_client import complete_json
+
+_COMPARABLE_TYPES = {
+    "payment",
+    "SLA",
+    "liability",
+    "insurance",
+    "warranty",
+    "IP",
+    "termination",
+    "penalty",
+    "governing_law",
+    "indemnification",
+    "assignment",
+    "dispute_resolution",
+    "confidentiality",
+}
 
 
 def detect_contradictions(
     doc_a_clauses: list[dict],
     doc_b_clauses: list[dict],
+    max_pairs: int | None = None,
+    batch_size: int = 1,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> list[dict]:
-    """
-    Compares matching clauseType pairs across two documents.
-    Returns RiskFindingDTO dicts for every detected contradiction.
-    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
     cfg = PIPELINE_CONFIG["contradiction_detector"]
     findings = []
-    pairs = _match_by_type(doc_a_clauses, doc_b_clauses)
-    for a, b in pairs:
-        if cfg["backend"] == "huggingface":
-            result = _contradict_hf(a, b, cfg)
-        else:
-            result = _contradict_claude(a, b)
-        if result:
-            findings.append(result)
+    pairs = _match_by_type(doc_a_clauses, doc_b_clauses, max_pairs=max_pairs)
+    for start in range(0, len(pairs), batch_size):
+        if should_cancel and should_cancel():
+            break
+        batch = pairs[start : start + batch_size]
+        findings.extend(evaluate_contradiction_batch(batch, cfg))
     return findings
 
 
-# ── HuggingFace backend (ContractNLI-style NLI model) ───────────
+def evaluate_contradiction_batch(
+    pairs: list[tuple[dict, dict]], cfg: dict | None = None
+) -> list[dict]:
+    config = cfg or PIPELINE_CONFIG["contradiction_detector"]
+    if config["backend"] != "huggingface":
+        return _contradict_llm_batch(pairs)
+    return [
+        result
+        for left, right in pairs
+        if (result := _contradict_hf(left, right, config))
+    ]
+
 
 def _contradict_hf(a: dict, b: dict, cfg: dict) -> dict | None:
     from transformers import pipeline as hf_pipeline
+
     nli = hf_pipeline(cfg["hf_task"], model=cfg["hf_model"])
-    # premise = doc_a clause, hypothesis = doc_b clause
     output = nli(
         sequences=a["text"][:400],
         candidate_labels=cfg["labels"],
         hypothesis_template="{}",
     )
-    # output["labels"] and output["scores"] are aligned lists
     label_scores = dict(zip(output["labels"], output["scores"]))
-    if label_scores.get("contradiction", 0) > 0.6:
-        return _build_finding(a, b, "Conflicting terms detected by NLI model.")
+    contradiction_score = label_scores.get("contradiction", 0)
+    if contradiction_score > 0.6:
+        return _build_finding(a, b, "Conflicting terms detected by NLI model.", round(contradiction_score * 100, 2))
     return None
 
 
-# ── Claude backend ───────────────────────────────────────────────
+def _contradict_llm(a: dict, b: dict) -> dict | None:
+    findings = _contradict_llm_batch([(a, b)])
+    return findings[0] if findings else None
 
-def _contradict_claude(a: dict, b: dict) -> dict | None:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+def _contradict_llm_batch(pairs: list[tuple[dict, dict]]) -> list[dict]:
+    pair_text = "\n\n".join(
+        f"PAIR {index}\nA: {left['text'][:500]}\nB: {right['text'][:500]}"
+        for index, (left, right) in enumerate(pairs)
+    )
     prompt = f"""You are a legal contract reviewer checking for contradictions.
 
-Document A clause ({a.get("documentName", "Doc A")}, section {a.get("sectionNumber", "?")}):
-\"\"\"{a["text"][:500]}\"\"\"
+{pair_text}
 
-Document B clause ({b.get("documentName", "Doc B")}, section {b.get("sectionNumber", "?")}):
-\"\"\"{b["text"][:500]}\"\"\"
-
-Do these clauses contradict each other?
 Return ONLY JSON:
 {{
-  "contradicts": true | false,
-  "reason": "<one sentence explanation>"
+  "results": [
+    {{
+      "index": 0,
+      "contradicts": true,
+      "reason": "<one sentence>",
+      "confidence": 95.5
+    }}
+  ]
 }}
+Use false for "contradicts" if they are compatible or merely different.
 """
-    resp = client.messages.create(
-        model=PIPELINE_CONFIG["claude_model"],
-        max_tokens=128,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    try:
-        data = json.loads(resp.content[0].text)
-        if data.get("contradicts"):
-            return _build_finding(a, b, data.get("reason", "Contradiction detected."))
-    except Exception:
-        pass
-    return None
+    data = complete_json(prompt, max_tokens=max(160, 120 * len(pairs)))
+    findings = []
+    for result in data.get("results", []):
+        index = result.get("index")
+        if not isinstance(index, int) or not 0 <= index < len(pairs):
+            continue
+        if result.get("contradicts"):
+            left, right = pairs[index]
+            findings.append(
+                _build_finding(
+                    left,
+                    right,
+                    result.get("reason", "Contradiction detected."),
+                    float(result.get("confidence", 90.0)),
+                )
+            )
+    return findings
 
-
-# ── Helpers ──────────────────────────────────────────────────────
 
 def _match_by_type(
-    doc_a: list[dict], doc_b: list[dict]
+    doc_a: list[dict],
+    doc_b: list[dict],
+    max_pairs: int | None = None,
 ) -> list[tuple[dict, dict]]:
-    """Pair clauses with the same clauseType across documents."""
-    from collections import defaultdict
+    pair_limit = max_pairs or int(PIPELINE_CONFIG.get("max_contradiction_pairs", 30))
     by_type_b: dict[str, list[dict]] = defaultdict(list)
-    for c in doc_b:
-        if c.get("clauseType"):
-            by_type_b[c["clauseType"]].append(c)
+    for clause in doc_b:
+        if clause.get("clauseType") in _COMPARABLE_TYPES:
+            by_type_b[clause["clauseType"]].append(clause)
+
     pairs = []
-    for c in doc_a:
-        ct = c.get("clauseType")
-        if ct and ct in by_type_b:
-            for match in by_type_b[ct]:
-                pairs.append((c, match))
+    for clause in doc_a:
+        clause_type = clause.get("clauseType")
+        if clause_type in by_type_b:
+            pairs.extend((clause, match) for match in by_type_b[clause_type])
+        if len(pairs) >= pair_limit:
+            return pairs[:pair_limit]
     return pairs
 
 
-def _build_finding(a: dict, b: dict, reason: str) -> dict:
+def _build_finding(a: dict, b: dict, reason: str, confidence: float) -> dict:
     return {
         "id": f"r_{uuid.uuid4().hex[:8]}",
         "clauseId": a["id"],
@@ -128,4 +167,10 @@ def _build_finding(a: dict, b: dict, reason: str) -> dict:
         ],
         "missingDocuments": None,
         "redline": None,
+        "contradictionType": "msa_conflict",
+        "confidence": confidence,
+        "comparisonText": {
+            "sowText": a["text"],
+            "msaText": b["text"],
+        }
     }

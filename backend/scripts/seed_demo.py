@@ -17,6 +17,7 @@ async def seed():
     print("Clearing database...")
     await db.riskfinding.delete_many()
     await db.clause.delete_many()
+    await db.auditlog.delete_many()
     await db.document.delete_many()
     await db.playbookrule.delete_many()
     await db.countrycompliancerule.delete_many()
@@ -83,7 +84,8 @@ async def seed():
         "text": "Customer shall pay all undisputed invoices within sixty (60) days of receipt.",
         "clause_type": "Payment",
         "references": json.dumps([]),
-        "overrides": json.dumps([])
+        "overrides": json.dumps([]),
+        "entities": json.dumps([])
     })
     
     # Risk
@@ -105,7 +107,9 @@ async def seed():
             "originalText": "within sixty (60) days of receipt.",
             "suggestedText": "within thirty (30) days of receipt.",
             "diffHtml": None
-        })
+        }),
+        "contradiction_type": "playbook_violation",
+        "confidence": 98.5
     })
     
     print("Seeding complete.")

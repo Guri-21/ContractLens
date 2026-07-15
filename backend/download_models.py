@@ -1,39 +1,79 @@
 """
-Run this once before starting the pipeline.
-Downloads and caches all HuggingFace models used by the pipeline.
-After the first run, models are cached in ~/.cache/huggingface/ — no re-download needed.
+Download and cache all Hugging Face models used by the benchmark.
 
 Usage:
     python download_models.py
-"""
-from transformers import pipeline as hf_pipeline
-import os, sys
 
-# ── Edit these two lines when you know the exact model IDs ──────
-CLAUSE_CLASSIFIER_MODEL  = os.getenv("CLAUSE_CLASSIFIER_MODEL",  "LEDGAR_MODEL_TBD")
-CONTRADICTION_MODEL      = os.getenv("CONTRADICTION_MODEL",       "CONTRACTNLI_MODEL_TBD")
-# ────────────────────────────────────────────────────────────────
+The Hugging Face client shows file-level progress bars while downloading.
+After the first run, models are cached under the normal Hugging Face cache
+folder and future runs should be much faster.
+"""
+
+import os
+import sys
+import time
+
+from huggingface_hub import snapshot_download
+
+
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "0")
 
 MODELS = [
-    ("Clause Classifier (LEDGAR)",        "text-classification",      CLAUSE_CLASSIFIER_MODEL),
-    ("Contradiction Detector (ContractNLI)", "zero-shot-classification", CONTRADICTION_MODEL),
+    {
+        "name": "BERT clause type",
+        "id": "mauro/bert-base-uncased-finetuned-clause-type",
+    },
+    {
+        "name": "DistilBERT LEDGAR",
+        "id": "SalmanAbbasi/lexglue-ledgar-distilbert",
+    },
+    {
+        "name": "DeBERTa NLI",
+        "id": "sileod/deberta-v3-large-tasksource-nli",
+    },
+    {
+        "name": "Risk scorer",
+        "id": "AnkushRaheja/Cls_Class_Risk_Scr",
+    },
+    {
+        "name": "ModernBERT unfair ToS",
+        "id": "Agreemind/modernbert-unfair-tos",
+    },
 ]
 
-def download_all():
-    for name, task, model_id in MODELS:
-        if "TBD" in model_id:
-            print(f"  [SKIP] {name} — model ID not set yet (set env var or edit this file)")
-            continue
-        print(f"  Downloading {name} ({model_id}) ...")
+
+def download_all() -> None:
+    total = len(MODELS)
+    started = time.time()
+
+    for index, model in enumerate(MODELS, 1):
+        model_started = time.time()
+        print("=" * 72, flush=True)
+        print(
+            f"[{index}/{total}] Downloading {model['name']}: {model['id']}",
+            flush=True,
+        )
+        print("Hugging Face file progress will appear below if files are missing.", flush=True)
+
         try:
-            hf_pipeline(task, model=model_id)
-            print(f"  [OK] {name} cached.")
-        except Exception as e:
-            print(f"  [FAIL] {name}: {e}")
+            local_path = snapshot_download(
+                repo_id=model["id"],
+                resume_download=True,
+            )
+        except Exception as exc:
+            print(f"[FAILED] {model['id']}: {exc}", flush=True)
             sys.exit(1)
 
+        elapsed = round(time.time() - model_started, 1)
+        print(f"[OK] {model['name']} cached in {elapsed}s", flush=True)
+        print(f"     Cache path: {local_path}", flush=True)
+
+    total_elapsed = round((time.time() - started) / 60, 1)
+    print("=" * 72, flush=True)
+    print(f"All {total} benchmark models are cached. Total time: {total_elapsed} min", flush=True)
+
+
 if __name__ == "__main__":
-    print("ContractLens — downloading pipeline models")
-    print("Models will be cached in ~/.cache/huggingface/\n")
+    print("ContractLens - downloading benchmark models", flush=True)
+    print("Models are cached in the Hugging Face cache folder.", flush=True)
     download_all()
-    print("\nDone. You can now run the pipeline without internet access.")
