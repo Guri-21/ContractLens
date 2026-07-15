@@ -5,6 +5,8 @@ import { mockClauses, mockRiskFindings } from '../mocks/data';
 import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';
 import { CrossDocumentComparison } from './CrossDocumentComparison';
+import { SourceCitation } from '../../components/document-viewer/SourceCitation';
+import { DependencyGraph } from '../../shared-components/DependencyGraph';
 
 export const ClauseViewer: React.FC = () => {
   const [selectedClauseId, setSelectedClauseId] = useState<string | null>(mockClauses[0].id);
@@ -200,18 +202,23 @@ export const ClauseViewer: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Evidence rendering */}
-                        {risk.evidence && risk.evidence.length === 1 && (
+                        {/* Source Citations — shows exact quotes, never paraphrased */}
+                        {risk.evidence && risk.evidence.length > 0 && (
                           <div className="mb-4">
-                            <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Evidence</h5>
-                            <div className="bg-gray-50 border border-gray-200 p-3 rounded text-sm">
-                              <div className="text-xs text-gray-500 mb-1">{risk.evidence[0].documentName} {risk.evidence[0].page && `• Page ${risk.evidence[0].page}`}</div>
-                              <p className="text-gray-800 italic">"{risk.evidence[0].quote}"</p>
-                            </div>
+                            <SourceCitation
+                              finding={risk}
+                              sectionHierarchy={
+                                selectedClause.sectionNumber
+                                  ? `${selectedClause.documentName} › §${selectedClause.sectionNumber}${
+                                      selectedClause.title ? ` › ${selectedClause.title}` : ''
+                                    }`
+                                  : undefined
+                              }
+                            />
                           </div>
                         )}
 
-                        {/* Cross Document Contradiction */}
+                        {/* Cross Document Contradiction (when multiple sources) */}
                         {risk.evidence && risk.evidence.length > 1 && (
                           <div className="mb-4">
                             <CrossDocumentComparison finding={risk} />
@@ -237,16 +244,25 @@ export const ClauseViewer: React.FC = () => {
               )}
             </div>
 
-            {/* Placeholders for Future Components */}
-            <div className="mt-12 space-y-4 border-t-2 border-dashed border-gray-200 pt-8 opacity-50">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center">Future Extensions</h3>
-              <div className="bg-gray-100 h-24 rounded border border-gray-200 flex items-center justify-center text-gray-400">
-                &lt;DependencyGraph clauseId="{selectedClause.id}" /&gt; (Placeholder)
-              </div>
-              <div className="bg-gray-100 h-24 rounded border border-gray-200 flex items-center justify-center text-gray-400">
-                &lt;PdfViewer documentId="{selectedClause.documentId}" page={selectedClause.page} /&gt; (Placeholder)
-              </div>
+            {/* Dependency Graph — clause relationship visualizer */}
+            <div className="mt-8 space-y-3 border-t border-gray-200 pt-6">
+              <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                Clause Dependency Graph
+                <span className="text-xs font-normal text-gray-400">
+                  ({mockClauses.length} clauses)
+                </span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Blue dashed = references · Red solid = overrides · Amber dashed = conflicts
+              </p>
+              <DependencyGraph clauses={mockClauses} height={420} />
+              {/* TODO: when backend/app/api/analyze.py returns a `graph` field,
+                  replace clauses={mockClauses} with graphData={analysisResult.graph}
+                  so backend-computed conflict edges (from findings) are rendered. */}
             </div>
+
+            {/* PdfViewer slot — implemented by Person 5 (cross-cutting-components branch) */}
+            {/* <PdfViewer documentId={selectedClause.documentId} page={selectedClause.page} highlightClauseId={selectedClause.id} /> */}
 
           </div>
         ) : (
