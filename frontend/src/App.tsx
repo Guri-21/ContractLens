@@ -18,7 +18,7 @@ import { fetchAuditLogs } from './api/audit';
 import { 
   User, PlaybookVersion, Contract, AuditEvent,
   playbookVersions, users as mockUsers, contracts as mockContracts,
-  ruleSetsData, trendData, deptData, countryData, clauseData, clauseTypeRisk, auditData 
+  trendData, deptData, countryData, clauseData, clauseTypeRisk, auditData 
 } from './mock/data';
 
 // Hardcoded accents
@@ -306,8 +306,6 @@ export default function App() {
               playbookVersions={playbooks}
               onSetActivePlaybook={handleSetActivePlaybook}
               onOpenPlaybookModal={() => { setModalFormInitial({}); setModalType('playbook'); }}
-              ruleSets={ruleSetsData}
-              onOpenCountryModal={() => setModalType('country')}
               usersList={usersList}
               onOpenUserModal={() => { setModalFormInitial({}); setModalType('user'); }}
               onEditUser={handleEditUser}

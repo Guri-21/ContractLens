@@ -51,7 +51,6 @@ export default function AppShell({
 
   const adminItems: NavItem[] = [
     { k: 'playbook', label: 'Playbook' },
-    { k: 'country', label: 'Country Rules' },
     { k: 'users', label: 'Users & Roles' },
     { k: 'contracts', label: 'Contract Monitoring', badge: pendingContractsCount },
     { k: 'audit', label: 'Audit Trail' },
