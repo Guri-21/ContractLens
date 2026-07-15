@@ -37,3 +37,7 @@ build
 
 # TypeScript
 *.tsbuildinfo
+
+# Temporary scripts and backups
+install.sh
+node_modules_old_*
