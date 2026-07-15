@@ -6,9 +6,24 @@ export interface BackendDocument {
   name: string;
   document_type: DocumentType;
   status: string;
+  uploaded_by_id?: string;
+  uploader?: { id: string; email: string } | null;
   assigned_to_id?: string | null;
   assigned_to?: { id: string; email: string } | null;
-  clauses?: Array<{ risks?: Array<{ risk_level: string }> }>;
+  clauses?: Array<{
+    id: string;
+    clause_type?: string | null;
+    clauseType?: string | null;
+    risks?: Array<{
+      id: string;
+      risk_level?: string;
+      riskLevel?: string;
+      status?: string;
+      reason?: string;
+      contradiction_type?: string | null;
+      contradictionType?: string | null;
+    }>;
+  }>;
 }
 
 export async function fetchBackendDocuments(): Promise<BackendDocument[]> {

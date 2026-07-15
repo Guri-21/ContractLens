@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { login as apiLogin } from '../../api/auth';
 import { useNavigate, useLocation } from 'react-router';
+import { clearAllSavedAnalysisCaches } from '../../reviewer-workspace/persistedAnalysis';
 
 interface AuthContextType {
   token: string | null;
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       const data = await apiLogin(u, p);
+      clearAllSavedAnalysisCaches();
       setToken(data.access_token);
       setRole(data.role);
       setEmail(data.email);
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    clearAllSavedAnalysisCaches();
     setToken(null);
     setRole(null);
     setEmail(null);

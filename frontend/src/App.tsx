@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchAllRisks } from './api/analyze';
-import { fetchBackendDocuments } from './api/documents';
+import { BackendDocument, fetchBackendDocuments } from './api/documents';
 import AppShell from './components/AppShell';
 import AdminLayout from './components/layout/AdminLayout';
 import { AuthProvider, ProtectedRoute, useAuth } from './lib/context/AuthContext';
-import type { Contract } from './mock/data';
+import { levelFor, type Contract } from './mock/data';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import SignIn from './pages/SignIn';
@@ -17,6 +17,7 @@ import MsaRepository from './pages/admin/MsaRepository';
 import Settings from './pages/admin/Settings';
 import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
+import { SavedAnalysesPage } from './reviewer-workspace/SavedAnalysesPage';
 
 const ACCENTS = {
   gold: { color: '#9C7A3C', hover: '#8B6A2D', soft: '#F4F0E8', text: '#5C4A29' },
@@ -84,20 +85,28 @@ function LegalAdvisorPortal() {
     let active = true;
 
     async function loadPortfolio() {
+      let documents: BackendDocument[] = [];
       try {
-        const [documents, findings] = await Promise.all([
-          fetchBackendDocuments(),
-          fetchAllRisks(),
-        ]);
+        documents = await fetchBackendDocuments();
         if (!active) return;
 
         const mappedContracts = Array.isArray(documents)
           ? documents.map(mapDocumentToContract)
           : [];
         setContracts(mappedContracts);
-        setRisks(Array.isArray(findings) ? findings : []);
+        const documentRisks = Array.isArray(documents) ? flattenDocumentRisks(documents) : [];
+        setRisks(documentRisks);
       } catch (error) {
-        console.warn('Backend server not reachable.', error);
+        console.warn('Backend documents not reachable.', error);
+      }
+
+      try {
+        const findings = await fetchAllRisks();
+        if (!active) return;
+        const documentRisks = flattenDocumentRisks(documents);
+        setRisks(documentRisks.length > 0 ? documentRisks : Array.isArray(findings) ? normalizeStandaloneRisks(findings) : []);
+      } catch (error) {
+        console.warn('Backend risk findings not reachable; using document risk data only.', error);
       }
     }
 
@@ -136,6 +145,8 @@ function LegalAdvisorPortal() {
         <Routes>
           <Route index element={<Navigate to="workspace" replace />} />
           <Route path="workspace" element={<ReviewerWorkspace />} />
+          <Route path="analyses" element={<SavedAnalysesPage />} />
+          <Route path="analyses/:documentId" element={<SavedAnalysesPage />} />
           <Route path="dashboard" element={dashboard} />
           <Route path="risk" element={dashboard} />
           <Route path="clause" element={dashboard} />
@@ -153,27 +164,105 @@ function LegalAdvisorPortal() {
   );
 }
 
-function mapDocumentToContract(document: any): Contract {
+function mapDocumentToContract(document: BackendDocument): Contract {
+  const risks = flattenDocumentRisks([document]);
+  const score = calculateRiskScore(risks);
+  const mappedStatus = mapDocumentStatus(document.status, risks.length);
+
   return {
     id: document.id,
     name: document.name || 'Unknown Document',
-    client: 'Backend Client',
-    dept: 'Legal',
-    country: 'United States',
+    client: inferClientName(document.name),
+    dept: inferDepartment(document.document_type),
+    country: 'India',
     type: document.document_type || 'MSA',
-    uploadedBy: document.uploader?.email || 'System',
-    date: 'Jul 14, 2026',
-    iso: '2026-07-14',
-    status: document.status || 'processing',
-    score: null,
-    level: null,
+    uploadedBy: document.uploader?.email || 'Current advisor',
+    date: formatDisplayDate(new Date()),
+    iso: new Date().toISOString().slice(0, 10),
+    status: mappedStatus,
+    score,
+    level: levelFor(score),
     reviewer: document.assigned_to?.email || 'Unassigned',
     rt: 1,
   };
 }
 
+function flattenDocumentRisks(documents: BackendDocument[]) {
+  return documents.flatMap((document) =>
+    (document.clauses || []).flatMap((clause) =>
+      (clause.risks || []).map((risk) => ({
+        ...risk,
+        riskLevel: risk.riskLevel || risk.risk_level || 'low',
+        contradictionType: risk.contradictionType || risk.contradiction_type || undefined,
+        clauseType: clause.clauseType || clause.clause_type || 'General',
+        clauseId: clause.id,
+        documentId: document.id,
+        documentName: document.name,
+      })),
+    ),
+  );
+}
+
+function normalizeStandaloneRisks(risks: any[]) {
+  return risks.map((risk) => ({
+    ...risk,
+    riskLevel: risk.riskLevel || risk.risk_level || 'low',
+    contradictionType: risk.contradictionType || risk.contradiction_type || undefined,
+    clauseType: risk.clauseType || risk.clause_type || 'General',
+  }));
+}
+
+function calculateRiskScore(risks: Array<{ riskLevel?: string; status?: string }>): number | null {
+  if (risks.length === 0) return null;
+
+  const weights: Record<string, number> = {
+    low: 20,
+    medium: 45,
+    high: 70,
+    critical: 90,
+  };
+
+  const total = risks.reduce((sum, risk) => {
+    if (risk.status === 'not_evaluated') return sum + 55;
+    return sum + (weights[risk.riskLevel || 'low'] || 20);
+  }, 0);
+
+  return Math.min(100, Math.round(total / risks.length));
+}
+
+function mapDocumentStatus(status: string, riskCount: number): Contract['status'] {
+  const normalized = (status || '').toLowerCase();
+  if (normalized === 'failed') return 'failed';
+  if (normalized === 'pending' || normalized === 'queued') return 'queued';
+  if (normalized === 'processing') return 'processing';
+  if (normalized === 'analyzed' || normalized === 'approved' || normalized === 'reviewed') return 'reviewed';
+  return riskCount > 0 ? 'reviewed' : 'processing';
+}
+
+function inferClientName(name: string): string {
+  const clean = name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+  const match = clean.match(/^([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)?)/);
+  return match?.[1] || 'Contract Portfolio';
+}
+
+function inferDepartment(documentType: string): string {
+  if (documentType === 'SOW' || documentType === 'ORDER_FORM') return 'Delivery';
+  if (documentType === 'NDA' || documentType === 'DPA') return 'Legal';
+  if (documentType === 'MSA') return 'Procurement';
+  return 'Legal';
+}
+
+function formatDisplayDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function getAdvisorNav(pathname: string): string {
   if (pathname.includes('/risk')) return 'risk';
+  if (pathname.includes('/analyses')) return 'analyses';
   if (pathname.includes('/clause')) return 'clause';
   if (pathname.includes('/business')) return 'business';
   if (pathname.includes('/dashboard')) return 'dashboard';

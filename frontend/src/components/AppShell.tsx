@@ -45,6 +45,7 @@ export default function AppShell({
 
   const reviewerItems: NavItem[] = [
     { k: 'workspace', label: 'Review Workspace' },
+    { k: 'analyses', label: 'Saved Analyses' },
     { k: 'dashboard', label: 'Analytics Overview' },
     { k: 'risk', label: 'Risk Analytics' },
     { k: 'clause', label: 'Clause Analytics' },
@@ -155,10 +156,10 @@ export default function AppShell({
           <div className="mt-auto px-5">
             <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded p-3.5">
               <div className="font-mono text-[10px] tracking-[0.1em] text-accent-text mb-1.5 uppercase font-medium">
-                Active Jurisdiction
+                Legal Grounding
               </div>
-              <div className="text-[13px] font-semibold text-[#0F172A]">United States</div>
-              <div className="text-[11px] text-[#64748B]">Federal + Delaware</div>
+              <div className="text-[13px] font-semibold text-[#0F172A]">India</div>
+              <div className="text-[11px] text-[#64748B]">Default statutory corpus</div>
             </div>
           </div>
         </nav>

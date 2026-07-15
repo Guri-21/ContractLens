@@ -5,7 +5,6 @@ import { ClauseDTO, RiskFindingDTO } from '../types';
 import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';
 import { CrossDocumentComparison } from './CrossDocumentComparison';
-import { DependencyGraph } from '../../shared-components/DependencyGraph';
 import { VersionComparison } from '../../shared-components/VersionComparison';
 
 interface ClauseViewerProps {
@@ -28,7 +27,7 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
     const clauseRisksForBadge = risks.filter(r => r.clauseId === clauseId);
     if (clauseRisksForBadge.length === 0) {
       return (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono uppercase bg-legal-bg text-legal-meta border border-legal-border">
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono uppercase bg-green-50 text-green-700 border border-green-200">
           OK
         </span>
       );
@@ -37,13 +36,13 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
     const notEvaluated = clauseRisksForBadge.find(r => r.status === 'not_evaluated');
     if (notEvaluated) {
       return (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono uppercase bg-legal-bg text-legal-meta border border-legal-border border-dashed" title="Not Evaluated">
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-mono uppercase bg-amber-50 text-amber-700 border border-amber-200 border-dashed" title="Not Evaluated">
           SKIP
         </span>
       );
     }
 
-    const maxRisk = risks.reduce((prev, current) => {
+    const maxRisk = clauseRisksForBadge.reduce((prev, current) => {
       const levels = { low: 1, medium: 2, high: 3, critical: 4 };
       return levels[current.riskLevel] > levels[prev.riskLevel] ? current : prev;
     });
@@ -77,6 +76,13 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
       return clauseRisksForFilter.some(r => r.riskLevel === riskFilter || r.contradictionType === riskFilter);
     });
   }, [clauses, risks, searchQuery, riskFilter]);
+
+  const getClauseTone = (clauseId: string) => {
+    const clauseRisks = risks.filter(r => r.clauseId === clauseId);
+    if (clauseRisks.length === 0) return 'border-green-200 bg-green-50/65 hover:bg-green-50';
+    if (clauseRisks.some(r => r.status === 'not_evaluated')) return 'border-amber-200 bg-amber-50/65 hover:bg-amber-50';
+    return 'border-red-200 bg-red-50/65 hover:bg-red-50';
+  };
 
   return (
     <div className="flex h-full bg-legal-surface overflow-hidden">
@@ -123,8 +129,8 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
             <div
               key={clause.id}
               onClick={() => setSelectedClauseId(clause.id)}
-              className={`p-4 border-b border-legal-border cursor-pointer transition-colors relative ${
-                selectedClauseId === clause.id ? 'bg-legal-surface' : 'hover:bg-legal-surface/50'
+              className={`p-4 border-b cursor-pointer transition-colors relative ${
+                selectedClauseId === clause.id ? 'bg-legal-surface border-legal-focus/40' : getClauseTone(clause.id)
               }`}
             >
               {selectedClauseId === clause.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-legal-focus" />}
@@ -205,12 +211,17 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                 clauseRisks.map(risk => (
                   <div key={risk.id}>
                     {risk.status === 'not_evaluated' ? (
-                      <div className="bg-legal-bg border border-legal-border border-dashed p-4 rounded-sm">
-                        <div className="font-mono text-[10px] uppercase text-legal-meta mb-2">Evaluation Skipped</div>
+                      <div className="bg-amber-50 border border-amber-200 border-dashed p-4 rounded-sm">
+                        <div className="font-mono text-[10px] uppercase text-amber-800 mb-2">Evaluation Skipped</div>
                         <p className="font-body text-sm text-legal-text">{risk.reason}</p>
+                        {risk.missingDocuments?.length ? (
+                          <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-800">
+                            Missing: {risk.missingDocuments.join(', ')}
+                          </p>
+                        ) : null}
                       </div>
                     ) : (
-                      <div className="bg-legal-surface border border-legal-border shadow-sm p-5 rounded-sm">
+                      <div className="bg-red-50/45 border border-red-200 shadow-sm p-5 rounded-sm">
                         <div className="flex items-center space-x-2 mb-3">
                           <span className={`font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm ${risk.riskLevel === 'high' || risk.riskLevel === 'critical' ? 'bg-risk-critical/10 text-risk-critical' : 'bg-risk-medium/10 text-risk-medium'}`}>
                             {risk.riskLevel} RISK
@@ -236,6 +247,11 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                            <div className="mt-4 border-l-2 border-legal-meta pl-3">
                               <div className="font-mono text-[10px] uppercase text-legal-meta mb-1">Source Evidence</div>
                               <p className="font-body text-sm text-legal-text italic">"{risk.evidence[0].quote}"</p>
+                              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-legal-meta">
+                                {risk.evidence[0].documentName}
+                                {risk.evidence[0].page ? ` - Page ${risk.evidence[0].page}` : ''}
+                                {risk.evidence[0].section ? ` - Section ${risk.evidence[0].section}` : ''}
+                              </p>
                            </div>
                         ) : null}
 
@@ -255,14 +271,6 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                   </div>
                 ))
               )}
-            </div>
-
-            {/* Graph */}
-            <div className="mt-12 pt-8 border-t border-legal-border">
-              <h3 className="font-display text-xl font-semibold text-legal-text mb-4">Clause Dependencies</h3>
-              <div className="h-[400px] border border-legal-border bg-legal-bg rounded-sm shadow-inner">
-                <DependencyGraph clauses={clauses} risks={risks} />
-              </div>
             </div>
 
             {/* Version History */}

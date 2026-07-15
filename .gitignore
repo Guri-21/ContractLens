@@ -13,6 +13,7 @@ Dataset/
 Dataset.zip
 datasets/
 backend/uploads/
+backend/chroma_data/
 backend/tmp_api_smoke/
 backend/scripts/benchmark/*_log.txt
 backend/scripts/benchmark/*_results.json

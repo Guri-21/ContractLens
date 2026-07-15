@@ -26,6 +26,12 @@ export default function Dashboard({
   activeNav,
   onOpenExportModal
 }: DashboardProps) {
+  const normalizedRisks = globalRisks.map((risk) => ({
+    ...risk,
+    riskLevel: risk.riskLevel || risk.risk_level || 'low',
+    clauseType: risk.clauseType || risk.clause_type || 'General',
+    status: risk.status || 'evaluated',
+  }));
 
   // Dynamic calculations based on contracts list
   const scored = contracts.filter((c) => c.level && c.score !== null) as (Contract & { score: number; level: string })[];
@@ -78,7 +84,7 @@ export default function Dashboard({
   }
 
   const clauseMap: Record<string, { flagged: number, critical: number }> = {};
-  globalRisks.forEach(r => {
+  normalizedRisks.forEach(r => {
     const t = r.clauseType || 'General';
     if (!clauseMap[t]) clauseMap[t] = { flagged: 0, critical: 0 };
     clauseMap[t].flagged += 1;

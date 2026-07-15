@@ -21,6 +21,7 @@ import {
   findDuplicateFilenames,
   type SupportingDocumentType,
 } from '../documentPackage';
+import { clearCachedSavedAnalysisDocuments } from '../persistedAnalysis';
 
 type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'done';
 
@@ -41,8 +42,6 @@ export function UploadFlow({ onComplete }: UploadFlowProps) {
   const [msaDocumentId, setMsaDocumentId] = useState('');
   const [sowFile, setSowFile] = useState<File | null>(null);
   const [supportingDocuments, setSupportingDocuments] = useState<SupportingDocument[]>([]);
-  const [playbookId, setPlaybookId] = useState('active-demo-playbook');
-  const [countryCode, setCountryCode] = useState('IN');
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [error, setError] = useState('');
   const [loadingMsas, setLoadingMsas] = useState(true);
@@ -50,7 +49,9 @@ export function UploadFlow({ onComplete }: UploadFlowProps) {
   useEffect(() => {
     fetchBackendDocuments()
       .then((documents) => {
-        const msas = documents.filter((document) => document.document_type === 'MSA');
+        const msas = documents.filter((document) =>
+          document.document_type === 'MSA' && Boolean(document.assigned_to_id || document.assigned_to)
+        );
         setAvailableMsas(msas);
         if (msas.length === 1) setMsaDocumentId(msas[0].id);
       })
@@ -117,9 +118,10 @@ export function UploadFlow({ onComplete }: UploadFlowProps) {
         msaDocumentId,
         sowDocumentId: sow.documentId,
         supportingDocumentIds,
-        playbookId,
-        countryCode,
+        playbookId: 'default-indian-laws',
+        countryCode: 'IN',
       });
+      clearCachedSavedAnalysisDocuments();
       setStatus('done');
       onComplete(result);
     } catch (reason) {
@@ -209,18 +211,13 @@ export function UploadFlow({ onComplete }: UploadFlowProps) {
         </section>
       </div>
 
-      <div className="mt-6 grid gap-4 border-b border-slate-200 pb-6 sm:grid-cols-2">
-        <label className="text-sm font-semibold text-text-dark">Playbook
-          <select value={playbookId} onChange={(event) => setPlaybookId(event.target.value)} className="mt-2 block w-full border border-slate-300 px-3 py-2 font-normal">
-            <option value="active-demo-playbook">Active corporate playbook</option>
-            <option value="standard-v1">Standard v1.0</option>
-          </select>
-        </label>
-        <label className="text-sm font-semibold text-text-dark">Jurisdiction
-          <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)} className="mt-2 block w-full border border-slate-300 px-3 py-2 font-normal">
-            <option value="IN">India</option><option value="US">United States</option><option value="UK">United Kingdom</option><option value="EU">European Union</option>
-          </select>
-        </label>
+      <div className="mt-6 border-b border-slate-200 pb-6">
+        <div className="max-w-xl border border-slate-200 bg-secondary/40 px-4 py-3">
+          <p className="text-sm font-semibold text-text-dark">Legal grounding</p>
+          <p className="mt-1 text-sm text-text-light">
+            Default Indian laws will be used for legal checks and citation support.
+          </p>
+        </div>
       </div>
 
       <button
