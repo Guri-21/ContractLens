@@ -6,6 +6,8 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from prisma import Json, Prisma
 
+from app.api.deps import require_role
+from app.api.documents import _document_access_filter
 from app.database import get_db
 from pipeline.run_pipeline import run_analysis_pipeline
 
@@ -32,10 +34,16 @@ class AnalyzeRunRequest(BaseModel):
 
 
 @router.post("")
-async def analyze_documents(req: AnalyzeRequest, db: Prisma = Depends(get_db)):
-    docs = await db.document.find_many(where={"id": {"in": req.documentIds}})
-    if not docs:
-        raise HTTPException(status_code=404, detail="Documents not found")
+async def analyze_documents(
+    req: AnalyzeRequest,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(require_role(["Admin", "Legal Reviewer"])),
+):
+    docs = await db.document.find_many(
+        where=_document_access_filter(current_user, req.documentIds)
+    )
+    if len(docs) != len(set(req.documentIds)):
+        raise HTTPException(status_code=404, detail="One or more documents were not found")
 
     doc_dicts = [
         {
@@ -68,8 +76,17 @@ async def analyze_documents(req: AnalyzeRequest, db: Prisma = Depends(get_db)):
 
 
 @router.get("")
-async def get_analyze(db: Prisma = Depends(get_db)):
-    risks = await db.riskfinding.find_many()
+async def get_analyze(
+    db: Prisma = Depends(get_db),
+    current_user=Depends(require_role(["Admin", "Legal Reviewer"])),
+):
+    documents = await db.document.find_many(
+        where=_document_access_filter(current_user)
+    )
+    document_ids = [document.id for document in documents]
+    risks = await db.riskfinding.find_many(
+        where={"clause": {"is": {"document_id": {"in": document_ids}}}}
+    )
     for risk in risks:
         risk.evidence = _json_value(risk.evidence, [])
         risk.missing_documents = _json_value(risk.missing_documents, [])
@@ -78,7 +95,10 @@ async def get_analyze(db: Prisma = Depends(get_db)):
 
 
 @router.post("/run")
-def run_real_analysis(payload: AnalyzeRunRequest):
+def run_real_analysis(
+    payload: AnalyzeRunRequest,
+    current_user=Depends(require_role(["Admin"])),
+):
     result = run_analysis_pipeline(
         documents=[doc.dict() for doc in payload.documents],
         playbook_rules=payload.playbook_rules,
