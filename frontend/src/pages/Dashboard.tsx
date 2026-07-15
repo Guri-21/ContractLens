@@ -448,25 +448,32 @@ export default function Dashboard({
 
             {/* Breakdown Bars */}
             <div className="flex flex-col gap-2">
-              {breakdownBars.map((b) => (
-                <div key={b.label} className="flex items-center gap-3.5 py-1.5">
-                  <div className="w-[150px] flex-none text-[13px] text-[#334155] text-right font-medium truncate">
-                    {b.label}
-                  </div>
-                  <div className="flex-1 h-5.5 bg-[#F8FAFC] rounded-[3px] overflow-hidden">
-                    <div
-                      className="h-full rounded-[3px] animate-cl-grow origin-left"
-                      style={{
-                        width: b.widthPercent,
-                        background: b.barColor
-                      }}
-                    ></div>
-                  </div>
-                  <div className="w-24 flex-none text-xs text-[#64748B]">
-                    {b.meta}
-                  </div>
+              {breakdownBars.length === 0 ? (
+                <div className="py-10 flex flex-col items-center justify-center text-center">
+                  <div className="text-3xl mb-2 opacity-30">📊</div>
+                  <div className="text-slate-500 text-sm">No data available for this category yet.</div>
                 </div>
-              ))}
+              ) : (
+                breakdownBars.map((b) => (
+                  <div key={b.label} className="flex items-center gap-3.5 py-1.5">
+                    <div className="w-[150px] flex-none text-[13px] text-[#334155] text-right font-medium truncate">
+                      {b.label}
+                    </div>
+                    <div className="flex-1 h-5.5 bg-[#F8FAFC] rounded-[3px] overflow-hidden">
+                      <div
+                        className="h-full rounded-[3px] animate-cl-grow origin-left"
+                        style={{
+                          width: b.widthPercent,
+                          background: b.barColor
+                        }}
+                      ></div>
+                    </div>
+                    <div className="w-24 flex-none text-xs text-[#64748B]">
+                      {b.meta}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -1,20 +1,48 @@
 """
-Step 3 — Clause Classification
-Labels each clause's type (payment, liability, IP, etc.)
-
-SWAP: set env var CLAUSE_CLASSIFIER_BACKEND=claude to use Claude instead of HuggingFace.
-      Set CLAUSE_CLASSIFIER_MODEL=<hf-model-id> to change the HF model.
+Step 3 - Clause Classification.
+Labels each clause's type: payment, liability, IP, SLA, and similar.
 """
-import json
-import anthropic
-import os
+
 from .config import PIPELINE_CONFIG
+from .llm_client import complete_json
 
 _CLAUSE_TYPES = [
-    "payment", "confidentiality", "SLA", "liability", "insurance",
-    "warranty", "force_majeure", "IP", "termination", "penalty",
-    "governing_law", "indemnification", "assignment", "dispute_resolution",
-    "definitions", "scope_of_work", "other",
+    "payment",
+    "confidentiality",
+    "SLA",
+    "liability",
+    "insurance",
+    "warranty",
+    "force_majeure",
+    "IP",
+    "termination",
+    "penalty",
+    "governing_law",
+    "indemnification",
+    "assignment",
+    "dispute_resolution",
+    "definitions",
+    "scope_of_work",
+    "other",
+]
+
+_KEYWORD_RULES = [
+    ("payment", ("payment", "pay ", "paid", "invoice", "invoices", "net ", "salary", "remuneration", "bonus", "fee", "fees")),
+    ("confidentiality", ("confidential", "trade secret", "non-public", "disclose", "disclosure")),
+    ("SLA", ("service level", "sla", "performance metric", "uptime", "response time")),
+    ("liability", ("liability", "liable", "limitation of liability", "damages")),
+    ("insurance", ("insurance", "insured", "coverage", "policy limits")),
+    ("warranty", ("warrant", "warranty", "represents and warrants")),
+    ("force_majeure", ("force majeure", "act of god", "beyond reasonable control")),
+    ("IP", ("intellectual property", "copyright", "patent", "trademark", "iprs", "moral rights")),
+    ("termination", ("terminate", "termination", "expires", "expiry", "notice period")),
+    ("penalty", ("penalty", "liquidated damages", "termination fee")),
+    ("governing_law", ("governing law", "laws of", "jurisdiction")),
+    ("indemnification", ("indemnify", "indemnification", "hold harmless", "defend")),
+    ("assignment", ("assign", "assignment", "change of control")),
+    ("dispute_resolution", ("arbitration", "dispute", "venue", "court", "litigation")),
+    ("definitions", ("means", "shall mean", "defined below", "definition")),
+    ("scope_of_work", ("scope of work", "services", "deliverables", "duties", "job title")),
 ]
 
 
@@ -22,14 +50,12 @@ def classify_clauses(clauses: list[dict]) -> list[dict]:
     cfg = PIPELINE_CONFIG["clause_classifier"]
     if cfg["backend"] == "huggingface":
         return _classify_hf(clauses, cfg)
-    return _classify_claude(clauses)
+    return _classify_llm(clauses)
 
-
-# ── HuggingFace backend ──────────────────────────────────────────
 
 def _classify_hf(clauses: list[dict], cfg: dict) -> list[dict]:
     from transformers import pipeline as hf_pipeline
-    # model loaded once; lazy import keeps startup fast when using Claude backend
+
     classifier = hf_pipeline(cfg["hf_task"], model=cfg["hf_model"])
     results = []
     for clause in clauses:
@@ -39,38 +65,60 @@ def _classify_hf(clauses: list[dict], cfg: dict) -> list[dict]:
     return results
 
 
-def _normalise_label(raw: str) -> str:
-    """Map HF model label to our canonical clauseType names."""
-    raw = raw.lower().replace("-", "_").replace(" ", "_")
-    for t in _CLAUSE_TYPES:
-        if t in raw:
-            return t
-    return "other"
-
-
-# ── Claude backend ───────────────────────────────────────────────
-
-def _classify_claude(clauses: list[dict]) -> list[dict]:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+def _classify_llm(clauses: list[dict]) -> list[dict]:
     results = []
+    valid_types = ", ".join(_CLAUSE_TYPES)
+    classify_other_with_llm = PIPELINE_CONFIG.get("classify_other_with_llm", False)
     for clause in clauses:
+        keyword_type = _classify_by_keywords(clause)
+        if keyword_type != "other":
+            results.append({**clause, "clauseType": keyword_type})
+            continue
+        if not classify_other_with_llm:
+            results.append({**clause, "clauseType": "other"})
+            continue
+
         prompt = f"""Classify this legal clause into exactly one type.
 Return ONLY a JSON object: {{"clauseType": "<type>"}}
 
-Valid types: {", ".join(_CLAUSE_TYPES)}
+Valid types: {valid_types}
 
 Clause text:
 \"\"\"{clause["text"][:800]}\"\"\"
 """
-        resp = client.messages.create(
-            model=PIPELINE_CONFIG["claude_model"],
-            max_tokens=64,
-            messages=[{"role": "user", "content": prompt}],
-        )
         try:
-            data = json.loads(resp.content[0].text)
-            clause_type = data.get("clauseType", "other")
+            data = complete_json(prompt, max_tokens=64)
+            clause_type = _normalise_label(str(data.get("clauseType", "other")))
         except Exception:
             clause_type = "other"
         results.append({**clause, "clauseType": clause_type})
     return results
+
+
+def _classify_by_keywords(clause: dict) -> str:
+    text = f"{clause.get('title') or ''} {clause.get('text') or ''}".lower()
+    for clause_type, keywords in _KEYWORD_RULES:
+        if any(keyword in text for keyword in keywords):
+            return clause_type
+    return "other"
+
+
+def _normalise_label(raw: str) -> str:
+    normalized = raw.lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "service_level": "SLA",
+        "service_level_agreement": "SLA",
+        "sla": "SLA",
+        "intellectual_property": "IP",
+        "ip": "IP",
+        "governing_law": "governing_law",
+        "governing": "governing_law",
+        "scope": "scope_of_work",
+        "scope_of_services": "scope_of_work",
+    }
+    if normalized in aliases:
+        return aliases[normalized]
+    for clause_type in _CLAUSE_TYPES:
+        if clause_type.lower() == normalized or clause_type.lower() in normalized:
+            return clause_type
+    return "other"

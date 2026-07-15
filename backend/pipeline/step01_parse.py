@@ -13,6 +13,8 @@ def parse_document(file_path: str) -> list[dict[str, Any]]:
         return _parse_pdf(file_path)
     if ext in (".docx", ".doc"):
         return _parse_docx(file_path)
+    if ext == ".txt":
+        return _parse_txt(file_path)
     raise ValueError(f"Unsupported file type: {ext}")
 
 
@@ -35,6 +37,12 @@ def _parse_docx(path: str) -> list[dict[str, Any]]:
     doc = Document(path)
     full_text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
     return [{"page": 1, "text": full_text, "tables": []}]
+
+
+def _parse_txt(path: str) -> list[dict[str, Any]]:
+    with open(path, "r", encoding="utf-8", errors="replace") as file:
+        text = file.read()
+    return [{"page": 1, "text": text, "tables": []}]
 
 
 def _ocr_page_fitz(path: str, page_index: int) -> str:

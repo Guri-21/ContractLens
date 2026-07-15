@@ -7,8 +7,16 @@ Data_sets_hackathon/
 .venv/
 venv/
 
-# HuggingFace model weights — never commit these to git
+# HuggingFace model weights and datasets — never commit these to git
 models/
+Dataset/
+Dataset.zip
+datasets/
+backend/uploads/
+backend/tmp_api_smoke/
+backend/scripts/benchmark/*_log.txt
+backend/scripts/benchmark/*_results.json
+backend/scripts/benchmark/openrouter_free_models.json
 *.bin
 *.safetensors
 *.pt
