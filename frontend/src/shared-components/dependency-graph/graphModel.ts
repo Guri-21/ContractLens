@@ -28,6 +28,8 @@ export interface DocumentLane {
 export interface GraphNode {
   id: string;
   position: { x: number; y: number };
+  width: number;
+  height: number;
   data: ClauseNodeData;
 }
 
@@ -80,7 +82,9 @@ const LANE_WIDTH = 320;
 const LANE_GAP = 48;
 const NODE_X_OFFSET = 24;
 const NODE_Y_OFFSET = 32;
-const NODE_Y_GAP = 112;
+export const CLAUSE_NODE_WIDTH = 272;
+export const CLAUSE_NODE_HEIGHT = 160;
+const NODE_Y_GAP = CLAUSE_NODE_HEIGHT + 24;
 const RISK_STATUS_THRESHOLD = RISK_LEVEL_ORDER.medium;
 const textCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -131,7 +135,8 @@ export function filterGraphModel(model: GraphModel, filters: GraphFilters): Grap
   const visibleNodeIds = new Set(nodes.map((node) => node.id));
   const edges = model.edges.filter((edge) => {
     const matchesRelationship = !relationshipTypes || relationshipTypes.has(edge.data.relationship);
-    return matchesRelationship && visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target);
+    const hasVisibleTarget = visibleNodeIds.has(edge.target) || edge.data.relationship === 'unresolved';
+    return matchesRelationship && visibleNodeIds.has(edge.source) && hasVisibleTarget;
   });
   const visibleDocumentIds = new Set(nodes.map((node) => node.data.clause.documentId));
   const lanes = model.lanes
@@ -215,6 +220,8 @@ function buildNodes(
       return {
         id: clause.id,
         position: { x: lane.x + NODE_X_OFFSET, y: NODE_Y_OFFSET + index * NODE_Y_GAP },
+        width: CLAUSE_NODE_WIDTH,
+        height: CLAUSE_NODE_HEIGHT,
         data: {
           clause,
           risks: [...clauseRisks],

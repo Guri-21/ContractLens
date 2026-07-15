@@ -99,6 +99,29 @@ const risks: RiskFindingDTO[] = [
   },
 ];
 
+const layoutClauses: ClauseDTO[] = [
+  {
+    id: 'layout-short',
+    documentId: 'layout-sow',
+    documentName: 'Layout Statement of Work',
+    documentType: 'SOW',
+    sectionNumber: '1.1',
+    text: 'Short clause text.',
+    references: [],
+    overrides: [],
+  },
+  {
+    id: 'layout-long',
+    documentId: 'layout-sow',
+    documentName: 'Layout Statement of Work',
+    documentType: 'SOW',
+    sectionNumber: '1.2',
+    text: 'Long clause content. '.repeat(200),
+    references: [],
+    overrides: [],
+  },
+];
+
 describe('document-lane graph model', () => {
   it('builds clause nodes, ordered document lanes, and relationship edges', () => {
     const model = buildGraphModel(clauses, risks);
@@ -133,6 +156,17 @@ describe('document-lane graph model', () => {
     expect(model.nodes.find((node) => node.id === 'sow-payment')).toBeDefined();
   });
 
+  it('uses fixed dimensions and vertical separation for long clause content', () => {
+    const model = buildGraphModel(layoutClauses, []);
+    const [shortNode, longNode] = model.nodes;
+
+    expect(shortNode.width).toBeGreaterThan(0);
+    expect(shortNode.height).toBeGreaterThan(0);
+    expect(longNode.width).toBe(shortNode.width);
+    expect(longNode.height).toBe(shortNode.height);
+    expect(longNode.position.y - shortNode.position.y).toBeGreaterThan(shortNode.height);
+  });
+
   it('filters nodes and retains only visible relationships', () => {
     const model = buildGraphModel(clauses, risks);
     const filtered = filterGraphModel(model, {
@@ -141,8 +175,23 @@ describe('document-lane graph model', () => {
     });
 
     expect(filtered.nodes.map((node) => node.id)).toEqual(['sow-payment']);
-    expect(filtered.edges).toEqual([]);
+    expect(filtered.edges.map((edge) => edge.id)).toEqual([
+      'sow-payment--unresolved--missing-exhibit',
+    ]);
     expect(filtered.lanes.map((lane) => lane.documentId)).toEqual(['sow-1']);
+  });
+
+  it('preserves an unresolved edge when its source remains visible after filtering', () => {
+    const model = buildGraphModel(clauses, risks);
+    const filtered = filterGraphModel(model, { relationshipTypes: ['unresolved'] });
+
+    expect(filtered.edges).toEqual([
+      expect.objectContaining({
+        id: 'sow-payment--unresolved--missing-exhibit',
+        source: 'sow-payment',
+        target: 'missing-exhibit',
+      }),
+    ]);
   });
 
   it('returns a focused node, its direct neighbors, and their connecting edges', () => {
