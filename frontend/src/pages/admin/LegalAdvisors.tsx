@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { fetchUsers, createUser, deleteUser, UserResponse } from '../../api/users';
-import { UserPlus, Trash2, Mail, ShieldAlert } from 'lucide-react';
+import { fetchAdvisorAnalytics, AdvisorAnalyticsResponse } from '../../api/adminAnalytics';
+import AdvisorAnalyticsModal from '../../components/admin/AdvisorAnalyticsModal';
+import { UserPlus, Trash2, Mail, ShieldAlert, BarChart2, FileText, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function LegalAdvisors() {
   const [advisors, setAdvisors] = useState<UserResponse[]>([]);
@@ -10,12 +13,15 @@ export default function LegalAdvisors() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
+  
+  const [analyticsData, setAnalyticsData] = useState<AdvisorAnalyticsResponse | null>(null);
+  const [isFetchingAnalytics, setIsFetchingAnalytics] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const loadAdvisors = async () => {
     setIsLoading(true);
     try {
       const users = await fetchUsers();
-      // Filter out admins if you only want to see reviewers, or show all
       setAdvisors(users.filter(u => u.role === 'Legal Reviewer'));
     } catch (err) {
       console.error(err);
@@ -54,20 +60,32 @@ export default function LegalAdvisors() {
     }
   };
 
+  const handleViewAnalytics = async (advisorId: string) => {
+    setIsFetchingAnalytics(advisorId);
+    try {
+      const data = await fetchAdvisorAnalytics(advisorId);
+      setAnalyticsData(data);
+    } catch (error) {
+      alert('Failed to load analytics for this advisor.');
+    } finally {
+      setIsFetchingAnalytics(null);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-cl-fade max-w-5xl mx-auto">
+    <div className="space-y-6 animate-cl-fade max-w-6xl mx-auto">
       <div>
         <h2 className="text-2xl font-serif font-bold text-text-dark">Legal Advisors</h2>
-        <p className="text-text-light text-sm mt-1">Manage platform access for your legal review team.</p>
+        <p className="text-text-light text-sm mt-1">Manage platform access and monitor performance of your legal review team.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Add New Advisor</CardTitle>
+          <CardTitle>Invite New Advisor</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAdd} className="flex gap-4 items-start">
-            <div className="flex-1">
+            <div className="flex-1 max-w-md">
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                 <input
@@ -90,65 +108,86 @@ export default function LegalAdvisors() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Directory</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="pb-3 font-medium text-sm text-text-light pl-4">Email / ID</th>
-                  <th className="pb-3 font-medium text-sm text-text-light">Role</th>
-                  <th className="pb-3 font-medium text-sm text-text-light text-right pr-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  [1, 2, 3].map((i) => (
-                    <tr key={i} className="border-b border-slate-50">
-                      <td className="py-4 pl-4"><div className="h-4 w-48 bg-slate-200 animate-pulse rounded" /></td>
-                      <td className="py-4"><div className="h-4 w-24 bg-slate-200 animate-pulse rounded" /></td>
-                      <td className="py-4 text-right pr-4"><div className="inline-block h-8 w-8 bg-slate-200 animate-pulse rounded" /></td>
-                    </tr>
-                  ))
-                ) : advisors.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-8 text-center text-text-light">
-                      <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      No legal advisors found. Invite one above.
-                    </td>
-                  </tr>
-                ) : (
-                  advisors.map(adv => (
-                    <tr key={adv.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 pl-4">
-                        <div className="font-medium text-text-dark">{adv.email}</div>
-                        <div className="text-xs text-text-light font-mono mt-0.5">{adv.id.split('-')[0]}...</div>
-                      </td>
-                      <td className="py-4">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                          {adv.role}
-                        </span>
-                      </td>
-                      <td className="py-4 text-right pr-4">
-                        <button
-                          onClick={() => handleDelete(adv.id)}
-                          className="p-2 text-slate-400 hover:text-status-danger hover:bg-status-danger/10 rounded-md transition-colors"
-                          title="Remove Advisor"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <div>
+        <h3 className="text-lg font-serif font-bold text-text-dark mb-4">Advisor Directory</h3>
+        
+        {isLoading ? (
+          <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+            <p className="text-text-light">Loading legal advisors...</p>
           </div>
-        </CardContent>
-      </Card>
+        ) : advisors.length === 0 ? (
+          <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+            <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+            <p className="text-text-light">No legal advisors found. Invite one above.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {advisors.map(adv => (
+              <Card key={adv.id} className="flex flex-col group hover:shadow-md transition-shadow">
+                <CardContent className="p-6 flex-1 flex flex-col relative">
+                  <button 
+                    onClick={() => handleDelete(adv.id)}
+                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-status-danger hover:bg-status-danger/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    title="Remove Advisor"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center text-primary font-bold text-lg border border-primary/20">
+                      {adv.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-text-dark truncate" title={adv.email}>{adv.email}</h4>
+                      <span className="px-2 py-0.5 mt-1 inline-block rounded-full bg-blue-100 text-blue-700 text-[10px] uppercase font-bold tracking-wider">
+                        {adv.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-slate-100">
+                    <Button 
+                      variant="primary" 
+                      className="w-full justify-center gap-2" 
+                      onClick={() => handleViewAnalytics(adv.id)}
+                      isLoading={isFetchingAnalytics === adv.id}
+                      disabled={isFetchingAnalytics !== null}
+                    >
+                      <BarChart2 className="w-4 h-4" />
+                      View Analytics
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 justify-center gap-2 text-xs" 
+                        onClick={() => navigate('/admin/msa')}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Documents
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 justify-center gap-2 text-xs" 
+                        onClick={() => navigate('/admin/msa')}
+                      >
+                        Assign MSA
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {analyticsData && (
+        <AdvisorAnalyticsModal 
+          analytics={analyticsData} 
+          onClose={() => setAnalyticsData(null)} 
+        />
+      )}
     </div>
   );
 }

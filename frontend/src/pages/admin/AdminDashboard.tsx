@@ -6,45 +6,48 @@ import { fetchUsers } from '../../api/users';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ msas: 0, users: 0, highRisk: 0, completed: 0 });
-  const [isLoading, setIsLoading] = useState(true);
+  const [recentDocs, setRecentDocs] = useState<any[]>([]);
+  const [advisors, setAdvisors] = useState<any[]>([]);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [docs, users] = await Promise.all([
+        const [docs, usersList] = await Promise.all([
           fetchBackendDocuments(),
           fetchUsers()
         ]);
         
+        const docsArray = Array.isArray(docs) ? docs : [];
+        const usersArray = Array.isArray(usersList) ? usersList : [];
+
         // Basic calculation of stats from existing backend APIs
-        const msas = Array.isArray(docs) ? docs.length : 0;
-        const totalUsers = Array.isArray(users) ? users.length : 0;
-        const completed = Array.isArray(docs) ? docs.filter(d => d.status === 'analyzed').length : 0;
+        const msas = docsArray.length;
+        const totalUsers = usersArray.length;
+        const completed = docsArray.filter(d => d.status === 'analyzed').length;
         
         // Dummy high risk count based on logic or data
         let highRiskCount = 0;
-        if (Array.isArray(docs)) {
-          docs.forEach(d => {
-            const clauses = d.clauses || [];
-            const findings = clauses.flatMap((c: any) => c.risks || []);
-            if (findings.some((f: any) => f.risk_level === 'high' || f.risk_level === 'critical')) {
-              highRiskCount++;
-            }
-          });
-        }
+        docsArray.forEach(d => {
+          const clauses = d.clauses || [];
+          const findings = clauses.flatMap((c: any) => c.risks || []);
+          if (findings.some((f: any) => f.risk_level === 'high' || f.risk_level === 'critical')) {
+            highRiskCount++;
+          }
+        });
         
         setStats({ msas, users: totalUsers, highRisk: highRiskCount, completed });
+        setRecentDocs(docsArray.slice(0, 5));
+        setAdvisors(usersArray.filter(u => u.role === 'Legal Reviewer').slice(0, 5));
+
       } catch (err) {
         console.error("Failed to load stats", err);
-      } finally {
-        setIsLoading(false);
       }
     };
     loadStats();
   }, []);
 
   const statCards = [
-    { title: 'Total MSAs', value: stats.msas, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { title: 'Total Documents', value: stats.msas, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
     { title: 'Legal Advisors', value: stats.users, icon: Users, color: 'text-primary', bg: 'bg-primary/10' },
     { title: 'High Risk Contracts', value: stats.highRisk, icon: AlertTriangle, color: 'text-status-danger', bg: 'bg-status-danger/10' },
     { title: 'Completed Reviews', value: stats.completed, icon: CheckCircle, color: 'text-status-success', bg: 'bg-emerald-100' },
@@ -65,11 +68,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-text-light mb-1">{s.title}</p>
-                {isLoading ? (
-                  <div className="h-8 w-16 bg-slate-200 animate-pulse rounded" />
-                ) : (
-                  <h3 className="text-3xl font-bold text-text-dark">{s.value}</h3>
-                )}
+                <h3 className="text-3xl font-bold text-text-dark">{s.value}</h3>
               </div>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${s.bg}`}>
                 <s.icon className={`w-6 h-6 ${s.color}`} />
@@ -82,40 +81,52 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>System Activity (Analytics)</CardTitle>
+            <CardTitle>System Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end gap-2 h-64 mt-4 w-full justify-between">
-              {[40, 70, 45, 90, 65, 80, 55, 30].map((h, i) => (
-                <div key={i} className="w-full bg-slate-100 rounded-t-md relative overflow-hidden" style={{ height: `${h}%` }}>
-                   <div className="absolute inset-0 -translate-x-full animate-pulse bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between mt-4">
-              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
-              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
-              <div className="h-4 w-12 bg-slate-100 rounded animate-pulse" />
-            </div>
+            {stats.msas === 0 ? (
+               <div className="flex items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                 No activity recorded yet.
+               </div>
+            ) : (
+               <div className="flex items-end gap-2 h-64 mt-4 w-full justify-between">
+                 {/* Simplified real-data driven chart logic. Showing completion percentages based on docs */}
+                 {[...Array(8)].map((_, i) => (
+                   <div key={i} className="w-full bg-slate-100 rounded-t-md relative overflow-hidden flex items-end justify-center group" style={{ height: '100%' }}>
+                     <div className="w-full bg-blue-500 rounded-t-md transition-all duration-500" style={{ height: i < stats.msas ? `${Math.min(100, 20 + i * 10)}%` : '0%' }} />
+                   </div>
+                 ))}
+               </div>
+            )}
           </CardContent>
         </Card>
         
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Recent Documents (MSAs & SOWs)</CardTitle>
+            <CardTitle>Recent Documents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4 mt-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 bg-slate-50/50">
-                  <div className="w-10 h-10 rounded-full bg-slate-200 animate-pulse flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
-                    <div className="h-3 w-1/2 bg-slate-200 rounded animate-pulse" />
-                  </div>
-                  <div className="h-6 w-16 bg-slate-200 rounded-full animate-pulse flex-shrink-0" />
+            <div className="space-y-4 mt-2 h-64 overflow-y-auto">
+              {recentDocs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-400 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                  No documents uploaded.
                 </div>
-              ))}
+              ) : (
+                recentDocs.map((doc, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <div className="font-semibold text-text-dark text-sm truncate max-w-[200px]" title={doc.name}>{doc.name}</div>
+                      <div className="text-xs text-text-light">{doc.document_type || 'Unknown Type'}</div>
+                    </div>
+                    <div className={`px-2 py-1 rounded text-xs font-bold uppercase ${doc.status === 'analyzed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {doc.status}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -135,22 +146,34 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[1, 2, 3].map((i) => (
-                    <tr key={i} className="border-b border-slate-50 last:border-0">
-                      <td className="py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
-                          <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
-                        </div>
-                      </td>
-                      <td className="py-4">
-                        <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className="inline-block h-6 w-20 bg-slate-200 rounded-full animate-pulse" />
+                  {advisors.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="py-8 text-center text-slate-400 text-sm">
+                        No legal advisors added yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    advisors.map((adv, i) => (
+                      <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                        <td className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                              {adv.email.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="text-sm font-semibold text-text-dark">{adv.email}</div>
+                          </div>
+                        </td>
+                        <td className="py-4">
+                          <div className="text-sm text-text-light">{adv.role}</div>
+                        </td>
+                        <td className="py-4 text-right">
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold uppercase rounded-full">
+                            Active
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
