@@ -1,10 +1,18 @@
 from types import SimpleNamespace
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.api.analyze import AnalyzeRequest, validate_analysis_request_documents
-from app.api.documents import ADMIN_UPLOAD_DOCUMENT_TYPE, normalize_reviewer_upload_type
+from app.api.deps import get_current_user
+from app.api.documents import (
+    ADMIN_UPLOAD_DOCUMENT_TYPE,
+    normalize_reviewer_upload_type,
+    router as documents_router,
+)
+from app.database import get_db
 
 
 def document(document_id, document_type):
@@ -93,3 +101,83 @@ def test_analysis_validation_rejects_inaccessible_requested_document():
             },
             request,
         )
+
+
+class FakeDocumentTable:
+    def __init__(self):
+        self.created = []
+
+    async def create(self, data):
+        self.created.append(data)
+        return SimpleNamespace(id="document-1", status=data["status"])
+
+
+class FakeAuditLogTable:
+    async def create(self, data):
+        return data
+
+
+class FakeDatabase:
+    def __init__(self):
+        self.document = FakeDocumentTable()
+        self.auditlog = FakeAuditLogTable()
+
+
+def build_document_client(current_user=None):
+    app = FastAPI()
+    database = FakeDatabase()
+    app.include_router(documents_router)
+    app.dependency_overrides[get_db] = lambda: database
+    if current_user is not None:
+        app.dependency_overrides[get_current_user] = lambda: current_user
+    return TestClient(app), database
+
+
+def upload_payload():
+    return {
+        "files": {"file": ("scope-of-work.pdf", b"contract", "application/pdf")},
+        "data": {"document_type": "SOW"},
+    }
+
+
+def user_with_role(role_name):
+    return SimpleNamespace(
+        id=f"{role_name.lower().replace(' ', '-')}-1",
+        role=SimpleNamespace(name=role_name),
+    )
+
+
+def test_document_upload_rejects_anonymous_requests(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    client, _ = build_document_client()
+
+    response = client.post("/api/documents/upload", **upload_payload())
+
+    assert response.status_code == 401
+
+
+def test_document_upload_rejects_admin_requests(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    client, _ = build_document_client(user_with_role("Admin"))
+
+    response = client.post("/api/documents/upload", **upload_payload())
+
+    assert response.status_code == 403
+
+
+def test_document_upload_accepts_legal_reviewer_requests(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    client, database = build_document_client(user_with_role("Legal Reviewer"))
+
+    response = client.post("/api/documents/upload", **upload_payload())
+
+    assert response.status_code == 200
+    assert database.document.created[0]["document_type"] == "SOW"
+
+
+def test_legacy_document_analyze_route_is_unavailable():
+    client, _ = build_document_client()
+
+    response = client.post("/api/documents/document-1/analyze")
+
+    assert response.status_code == 404
