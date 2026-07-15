@@ -10,7 +10,15 @@ export async function fetchAllRisks() {
   return res.json();
 }
 
-export async function fetchBackendAnalyze(documentIds: string[], playbookId: string, countryCode: string) {
+export interface AnalysisPackageRequest {
+  msaDocumentId: string;
+  sowDocumentId: string;
+  supportingDocumentIds: string[];
+  playbookId: string;
+  countryCode: string;
+}
+
+export async function fetchBackendAnalyze(payload: AnalysisPackageRequest) {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
@@ -22,10 +30,13 @@ export async function fetchBackendAnalyze(documentIds: string[], playbookId: str
   const res = await fetch(`${API_BASE_URL}/api/analyze`, { 
     method: 'POST',
     headers,
-    body: JSON.stringify({ documentIds, playbookId, countryCode })
+    body: JSON.stringify(payload)
   });
   
-  if (!res.ok) throw new Error('Failed to fetch backend analysis findings');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Failed to analyze the contract package');
+  }
   return res.json();
 }
 

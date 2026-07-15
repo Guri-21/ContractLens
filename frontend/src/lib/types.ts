@@ -1,4 +1,4 @@
-export type DocumentType = "MSA" | "SOW" | "SLA" | "NDA" | "EXHIBIT" | "PLAYBOOK" | "LAW";
+export type DocumentType = "MSA" | "SOW" | "SLA" | "NDA" | "EXHIBIT" | "AMENDMENT" | "ORDER_FORM" | "DPA" | "OTHER" | "PLAYBOOK" | "LAW";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type EvaluationStatus = "evaluated" | "not_evaluated";
 

@@ -1,175 +1,241 @@
-import React, { useState } from 'react';
-import { UploadCloud, FileText, CheckCircle, Loader2 } from 'lucide-react';
-import { uploadDocument } from '../../api/documents';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileCheck2,
+  FilePlus2,
+  FileText,
+  LoaderCircle,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { fetchBackendAnalyze } from '../../api/analyze';
+import {
+  fetchBackendDocuments,
+  uploadDocument,
+  type BackendDocument,
+} from '../../api/documents';
+import {
+  SUPPORTING_DOCUMENT_OPTIONS,
+  canAnalyzePackage,
+  findDuplicateFilenames,
+  type SupportingDocumentType,
+} from '../documentPackage';
 
-type UploadStatus = 'idle' | 'uploading' | 'parsing' | 'analyzing' | 'done';
+type UploadStatus = 'idle' | 'uploading' | 'analyzing' | 'done';
 
-interface UploadFlowProps {
-  onComplete: (data: { clauses: any[], risks: any[] }) => void;
+interface SupportingDocument {
+  id: string;
+  file: File;
+  documentType: SupportingDocumentType;
 }
 
-export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
+interface UploadFlowProps {
+  onComplete: (data: { clauses: any[]; risks: any[] }) => void;
+}
+
+const ACCEPTED_FILE_PATTERN = /\.(pdf|docx)$/i;
+
+export function UploadFlow({ onComplete }: UploadFlowProps) {
+  const [availableMsas, setAvailableMsas] = useState<BackendDocument[]>([]);
+  const [msaDocumentId, setMsaDocumentId] = useState('');
+  const [sowFile, setSowFile] = useState<File | null>(null);
+  const [supportingDocuments, setSupportingDocuments] = useState<SupportingDocument[]>([]);
+  const [playbookId, setPlaybookId] = useState('active-demo-playbook');
+  const [countryCode, setCountryCode] = useState('IN');
   const [status, setStatus] = useState<UploadStatus>('idle');
-  const [files, setFiles] = useState<File[]>([]);
-  const [playbook, setPlaybook] = useState('active-demo-playbook');
-  const [country, setCountry] = useState('IN');
-  const [contractType, setContractType] = useState('MSA');
+  const [error, setError] = useState('');
+  const [loadingMsas, setLoadingMsas] = useState(true);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files).filter(f => 
-        f.name.endsWith('.pdf') || f.name.endsWith('.docx')
-      );
-      
-      if (selectedFiles.length !== e.target.files.length) {
-        alert("Only .pdf and .docx files are supported.");
-      }
+  useEffect(() => {
+    fetchBackendDocuments()
+      .then((documents) => {
+        const msas = documents.filter((document) => document.document_type === 'MSA');
+        setAvailableMsas(msas);
+        if (msas.length === 1) setMsaDocumentId(msas[0].id);
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load assigned MSAs.'))
+      .finally(() => setLoadingMsas(false));
+  }, []);
 
-      setFiles((currentFiles) => {
-        const byName = new Map(currentFiles.map((file) => [file.name, file]));
-        selectedFiles.forEach((file) => byName.set(file.name, file));
-        return Array.from(byName.values()).slice(0, 2);
-      });
-      e.target.value = '';
+  const ready = canAnalyzePackage({ msaDocumentId, sowFile });
+  const selectedMsa = availableMsas.find((document) => document.id === msaDocumentId);
+  const existingNames = useMemo(
+    () => [sowFile, ...supportingDocuments.map((document) => document.file)].filter(Boolean) as File[],
+    [sowFile, supportingDocuments],
+  );
+
+  function chooseSow(file?: File) {
+    setError('');
+    if (!file) return;
+    if (!ACCEPTED_FILE_PATTERN.test(file.name)) {
+      setError('The SOW must be a PDF or DOCX file.');
+      return;
     }
-  };
+    if (supportingDocuments.some((document) => document.file.name.toLowerCase() === file.name.toLowerCase())) {
+      setError('That filename is already used by a supporting document.');
+      return;
+    }
+    setSowFile(file);
+  }
 
-  const startAnalysis = async () => {
-    if (files.length === 0) return;
+  function addSupportingFiles(files: File[]) {
+    setError('');
+    const validFiles = files.filter((file) => ACCEPTED_FILE_PATTERN.test(file.name));
+    if (validFiles.length !== files.length) {
+      setError('Only PDF and DOCX supporting documents are accepted.');
+    }
+    const combined = [...existingNames, ...validFiles];
+    const duplicates = findDuplicateFilenames(combined);
+    if (duplicates.length) {
+      setError(`Duplicate filename: ${duplicates.join(', ')}`);
+      return;
+    }
+    setSupportingDocuments((current) => [
+      ...current,
+      ...validFiles.map((file) => ({
+        id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+        file,
+        documentType: 'OTHER' as const,
+      })),
+    ]);
+  }
+
+  async function analyzePackage() {
+    if (!ready || !sowFile) return;
+    setError('');
     setStatus('uploading');
-    
     try {
-      // 1. Upload files
-      const documentIds: string[] = [];
-      for (const file of files) {
-        const res = await uploadDocument(file);
-        documentIds.push(res.documentId);
+      const sow = await uploadDocument(sowFile, 'SOW');
+      const supportingDocumentIds: string[] = [];
+      for (const document of supportingDocuments) {
+        const uploaded = await uploadDocument(document.file, document.documentType);
+        supportingDocumentIds.push(uploaded.documentId);
       }
-      
-      // Simulate granular steps since backend is a single POST request right now
-      setStatus('parsing');
-      await new Promise(r => setTimeout(r, 1500));
-      
       setStatus('analyzing');
-      const data = await fetchBackendAnalyze(documentIds, playbook, country);
-      
+      const result = await fetchBackendAnalyze({
+        msaDocumentId,
+        sowDocumentId: sow.documentId,
+        supportingDocumentIds,
+        playbookId,
+        countryCode,
+      });
       setStatus('done');
-      onComplete(data);
-    } catch (err) {
-      console.error(err);
+      onComplete(result);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Contract package analysis failed.');
       setStatus('idle');
     }
-  };
+  }
 
   return (
-    <div className="max-w-2xl mx-auto mt-20 p-8 bg-white shadow-xl rounded-xl border border-gray-100">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">ContractLens Reviewer</h1>
-        <p className="text-gray-500 mt-2">Upload up to 2 related documents for AI analysis.</p>
-      </div>
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+      <header className="mb-8 border-b border-slate-200 pb-5">
+        <p className="text-xs font-semibold uppercase text-primary">New contract review</p>
+        <h1 className="mt-2 font-serif text-3xl font-bold text-text-dark">Build the contract package</h1>
+        <p className="mt-2 max-w-2xl text-sm text-text-light">
+          Compare a new Statement of Work with the governing MSA selected by your administrator.
+        </p>
+      </header>
 
-      <div className="space-y-6">
-        {/* Upload Area */}
-        <div className="border-2 border-dashed border-indigo-200 rounded-xl p-8 text-center bg-indigo-50/50 hover:bg-indigo-50 transition-colors">
-          <UploadCloud className="mx-auto h-12 w-12 text-indigo-400 mb-4" />
-          <div className="flex text-sm text-gray-600 justify-center flex-col items-center">
-            <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 px-3 py-1 shadow-sm border border-gray-200">
-              <span>Select files</span>
-              <input id="file-upload" name="file-upload" type="file" accept=".pdf,.docx" className="sr-only" multiple onChange={handleFileChange} />
-            </label>
-            <p className="mt-2">or drag and drop (Max 2)</p>
-            <p className="text-xs text-gray-400 mt-1">PDF or DOCX up to 10MB</p>
-          </div>
+      {error && (
+        <div className="mb-5 flex items-start gap-3 border border-status-danger/30 bg-red-50 px-4 py-3 text-sm text-status-danger">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
+      )}
 
-        {/* Selected Files */}
-        {files.length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-700">Selected Documents</h3>
-            {files.map((file, idx) => (
-              <div key={idx} className="flex items-center text-sm text-gray-600">
-                <FileText className="h-4 w-4 mr-2 text-indigo-500" />
-                {file.name}
+      <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+        <section className="grid gap-5 px-5 py-6 md:grid-cols-[220px_1fr]">
+          <SectionTitle icon={ShieldCheck} number="01" title="Governing MSA" description="Published and assigned by Admin" />
+          <div>
+            <label htmlFor="governing-msa" className="mb-2 block text-sm font-semibold text-text-dark">Assigned MSA</label>
+            <select
+              id="governing-msa"
+              value={msaDocumentId}
+              onChange={(event) => setMsaDocumentId(event.target.value)}
+              disabled={loadingMsas || availableMsas.length === 0}
+              className="w-full border border-slate-300 bg-white px-3 py-2.5 text-sm text-text-dark focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-slate-100"
+            >
+              <option value="">{loadingMsas ? 'Loading assigned MSAs...' : 'Select an assigned MSA'}</option>
+              {availableMsas.map((document) => (
+                <option key={document.id} value={document.id}>{document.name} ({document.status})</option>
+              ))}
+            </select>
+            {!loadingMsas && availableMsas.length === 0 && (
+              <p className="mt-2 text-sm text-status-warning">No MSA is assigned. Ask an Admin to publish and assign one.</p>
+            )}
+            {selectedMsa && <p className="mt-2 text-xs text-text-light">This source is read-only for Legal Advisors.</p>}
+          </div>
+        </section>
+
+        <section className="grid gap-5 px-5 py-6 md:grid-cols-[220px_1fr]">
+          <SectionTitle icon={FileCheck2} number="02" title="Statement of Work" description="Required primary document" />
+          <div>
+            <label className="flex min-h-28 cursor-pointer items-center justify-center border-2 border-dashed border-primary/30 bg-secondary/40 px-5 text-center hover:border-primary">
+              <input type="file" accept=".pdf,.docx" className="sr-only" onChange={(event) => { chooseSow(event.target.files?.[0]); event.target.value = ''; }} />
+              {sowFile ? (
+                <span className="flex items-center gap-3 text-sm font-medium text-text-dark"><FileText className="h-5 w-5 text-primary" />{sowFile.name}</span>
+              ) : (
+                <span className="text-sm text-text-light"><strong className="text-primary">Choose SOW</strong><br />PDF or DOCX</span>
+              )}
+            </label>
+            {sowFile && <button type="button" onClick={() => setSowFile(null)} className="mt-2 text-sm font-medium text-status-danger">Remove SOW</button>}
+          </div>
+        </section>
+
+        <section className="grid gap-5 px-5 py-6 md:grid-cols-[220px_1fr]">
+          <SectionTitle icon={FilePlus2} number="03" title="Supporting Documents" description="Optional agreements and evidence" />
+          <div className="space-y-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-text-dark hover:border-primary hover:text-primary">
+              <FilePlus2 className="h-4 w-4" /> Add supporting files
+              <input type="file" accept=".pdf,.docx" multiple className="sr-only" onChange={(event) => { addSupportingFiles(Array.from(event.target.files || [])); event.target.value = ''; }} />
+            </label>
+            {supportingDocuments.length === 0 && <p className="text-sm text-text-light">NDA, SLA, exhibit, amendment, order form, DPA, or another related contract.</p>}
+            {supportingDocuments.map((document) => (
+              <div key={document.id} className="grid items-center gap-3 border border-slate-200 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_230px_36px]">
+                <span className="truncate text-sm font-medium text-text-dark">{document.file.name}</span>
+                <select
+                  value={document.documentType}
+                  onChange={(event) => setSupportingDocuments((current) => current.map((item) => item.id === document.id ? { ...item, documentType: event.target.value as SupportingDocumentType } : item))}
+                  className="border border-slate-300 bg-white px-2 py-2 text-sm focus:border-primary focus:outline-none"
+                >
+                  {SUPPORTING_DOCUMENT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <button type="button" title="Remove document" onClick={() => setSupportingDocuments((current) => current.filter((item) => item.id !== document.id))} className="flex h-9 w-9 items-center justify-center text-text-light hover:text-status-danger"><X className="h-4 w-4" /></button>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Configuration */}
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Playbook Version</label>
-            <select
-              value={playbook}
-              onChange={(e) => setPlaybook(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
-            >
-              <option value="active-demo-playbook">Demo Playbook - Net 30 Payment</option>
-              <option value="standard-v1">Standard v1.0</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
-            >
-              <option value="IN">India</option>
-              <option value="US">United States</option>
-              <option value="UK">United Kingdom</option>
-              <option value="EU">European Union</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contract Type</label>
-            <select
-              value={contractType}
-              onChange={(e) => setContractType(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
-            >
-              <option value="MSA">MSA</option>
-              <option value="SOW">SOW</option>
-              <option value="NDA">NDA</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Actions & Status */}
-        <div className="pt-4 flex flex-col items-center">
-          <button
-            onClick={startAnalysis}
-            disabled={status !== 'idle'}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {status === 'idle' ? 'Run AI Analysis' : 'Processing...'}
-          </button>
-          
-          {status !== 'idle' && (
-            <div className="mt-6 w-full space-y-3">
-              <StatusRow active={status === 'uploading'} done={['parsing', 'analyzing', 'done'].includes(status)} label="Uploading documents..." />
-              <StatusRow active={status === 'parsing'} done={['analyzing', 'done'].includes(status)} label="Parsing clauses and tables..." />
-              <StatusRow active={status === 'analyzing'} done={['done'].includes(status)} label="Analyzing risks against playbook..." />
-            </div>
-          )}
-        </div>
+        </section>
       </div>
-    </div>
-  );
-};
 
-const StatusRow = ({ active, done, label }: { active: boolean; done: boolean; label: string }) => {
-  return (
-    <div className={`flex items-center text-sm ${active ? 'text-indigo-600 font-medium' : done ? 'text-green-600' : 'text-gray-400'}`}>
-      {done ? (
-        <CheckCircle className="h-5 w-5 mr-3" />
-      ) : active ? (
-        <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-      ) : (
-        <div className="h-5 w-5 mr-3 rounded-full border-2 border-gray-200" />
-      )}
-      {label}
+      <div className="mt-6 grid gap-4 border-b border-slate-200 pb-6 sm:grid-cols-2">
+        <label className="text-sm font-semibold text-text-dark">Playbook
+          <select value={playbookId} onChange={(event) => setPlaybookId(event.target.value)} className="mt-2 block w-full border border-slate-300 px-3 py-2 font-normal">
+            <option value="active-demo-playbook">Active corporate playbook</option>
+            <option value="standard-v1">Standard v1.0</option>
+          </select>
+        </label>
+        <label className="text-sm font-semibold text-text-dark">Jurisdiction
+          <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)} className="mt-2 block w-full border border-slate-300 px-3 py-2 font-normal">
+            <option value="IN">India</option><option value="US">United States</option><option value="UK">United Kingdom</option><option value="EU">European Union</option>
+          </select>
+        </label>
+      </div>
+
+      <button
+        type="button"
+        onClick={analyzePackage}
+        disabled={!ready || status !== 'idle'}
+        className="mt-6 flex w-full items-center justify-center gap-2 bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        {status === 'uploading' || status === 'analyzing' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : status === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <FileCheck2 className="h-4 w-4" />}
+        {status === 'uploading' ? 'Uploading contract package...' : status === 'analyzing' ? 'Analyzing MSA against SOW...' : status === 'done' ? 'Analysis complete' : 'Analyze Contract Package'}
+      </button>
     </div>
   );
-};
+}
+
+function SectionTitle({ icon: Icon, number, title, description }: { icon: typeof ShieldCheck; number: string; title: string; description: string }) {
+  return <div className="flex gap-3"><Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-[10px] font-bold uppercase text-accent">{number}</p><h2 className="font-serif text-lg font-bold text-text-dark">{title}</h2><p className="mt-1 text-xs text-text-light">{description}</p></div></div>;
+}

@@ -1,6 +1,17 @@
 import { API_BASE_URL } from './client';
+import type { DocumentType } from '../lib/types';
 
-export async function fetchBackendDocuments() {
+export interface BackendDocument {
+  id: string;
+  name: string;
+  document_type: DocumentType;
+  status: string;
+  assigned_to_id?: string | null;
+  assigned_to?: { id: string; email: string } | null;
+  clauses?: Array<{ risks?: Array<{ risk_level: string }> }>;
+}
+
+export async function fetchBackendDocuments(): Promise<BackendDocument[]> {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {};
   if (token) {
@@ -12,7 +23,7 @@ export async function fetchBackendDocuments() {
   return res.json();
 }
 
-export async function uploadDocument(file: File) {
+export async function uploadDocument(file: File, documentType: DocumentType) {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {};
   if (token) {
@@ -21,6 +32,7 @@ export async function uploadDocument(file: File) {
   
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('document_type', documentType);
   
   const res = await fetch(`${API_BASE_URL}/api/documents/upload`, {
     method: 'POST',
@@ -28,7 +40,10 @@ export async function uploadDocument(file: File) {
     body: formData
   });
   
-  if (!res.ok) throw new Error('Upload failed');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Upload failed for ${file.name}`);
+  }
   return res.json();
 }
 

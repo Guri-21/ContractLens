@@ -10,7 +10,7 @@ export type ClauseDTO = {
   id: string;
   documentId: string;
   documentName: string;
-  documentType: "MSA" | "SOW" | "SLA" | "NDA" | "EXHIBIT" | "PLAYBOOK" | "LAW";
+  documentType: "MSA" | "SOW" | "SLA" | "NDA" | "EXHIBIT" | "AMENDMENT" | "ORDER_FORM" | "DPA" | "OTHER" | "PLAYBOOK" | "LAW";
   sectionNumber?: string;
   title?: string;
   page?: number;
