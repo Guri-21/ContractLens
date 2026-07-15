@@ -12,14 +12,19 @@ interface UploadFlowProps {
 export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
-  const [playbook, setPlaybook] = useState('v1.0');
-  const [country, setCountry] = useState('US');
+  const [playbook, setPlaybook] = useState('active-demo-playbook');
+  const [country, setCountry] = useState('IN');
   const [contractType, setContractType] = useState('MSA');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files).slice(0, 2); // Max 2 docs
-      setFiles(selectedFiles);
+      const selectedFiles = Array.from(e.target.files);
+      setFiles((currentFiles) => {
+        const byName = new Map(currentFiles.map((file) => [file.name, file]));
+        selectedFiles.forEach((file) => byName.set(file.name, file));
+        return Array.from(byName.values()).slice(0, 2);
+      });
+      e.target.value = '';
     }
   };
 
@@ -89,8 +94,8 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
               onChange={(e) => setPlaybook(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
             >
-              <option value="v1.0">Standard v1.0</option>
-              <option value="v2.0">Enterprise v2.0</option>
+              <option value="active-demo-playbook">Demo Playbook - Net 30 Payment</option>
+              <option value="standard-v1">Standard v1.0</option>
             </select>
           </div>
           <div>
@@ -100,6 +105,7 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
               onChange={(e) => setCountry(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
             >
+              <option value="IN">India</option>
               <option value="US">United States</option>
               <option value="UK">United Kingdom</option>
               <option value="EU">European Union</option>

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from typing import List
-from prisma import Prisma
+from prisma import Json, Prisma
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from pydantic import BaseModel
@@ -28,7 +29,7 @@ async def upload_document(
     doc = await db.document.create(
         data={
             "name": file.filename, 
-            "document_type": "MSA", 
+            "document_type": _infer_document_type(file.filename), 
             "status": "pending", 
             "file_path": file_path, 
             "uploaded_by_id": current_user.id
@@ -87,10 +88,11 @@ async def analyze_document(
     playbook_rules = [r.description for r in playbook_rules_db]
 
     # Run the real pipeline
-    result = run_analysis_pipeline(
-        documents=docs_for_pipeline,
-        playbook_rules=playbook_rules,
-        country_code=request.countryCode or "US"
+    result = await run_in_threadpool(
+        run_analysis_pipeline,
+        docs_for_pipeline,
+        playbook_rules,
+        request.countryCode or "US",
     )
 
     # Delete existing clauses and risks for these docs to avoid duplicates
@@ -110,9 +112,9 @@ async def analyze_document(
             "page": c.get("page"),
             "text": c["text"],
             "clause_type": c.get("clauseType"),
-            "references": json.dumps(c.get("references", [])),
-            "overrides": json.dumps(c.get("overrides", [])),
-            "table_data": json.dumps(c.get("tableData")) if c.get("tableData") else None
+            "references": Json(c.get("references", [])),
+            "overrides": Json(c.get("overrides", [])),
+            **({"table_data": Json(c.get("tableData"))} if c.get("tableData") is not None else {})
         })
 
     # Persist the new findings
@@ -124,9 +126,9 @@ async def analyze_document(
             "status": f["status"],
             "reason": f["reason"],
             "playbook_rule_violated": f.get("playbookRuleViolated"),
-            "evidence": json.dumps(f.get("evidence", [])),
-            "missing_documents": json.dumps(f.get("missingDocuments", [])),
-            "redline": json.dumps(f.get("redline")) if f.get("redline") else None
+            "evidence": Json(f.get("evidence", [])),
+            "missing_documents": Json(f.get("missingDocuments", [])),
+            **({"redline": Json(f.get("redline"))} if f.get("redline") is not None else {})
         })
 
     # Update document statuses
@@ -145,6 +147,14 @@ async def analyze_document(
     return {
         "clauses": result["clauses"],
         "risks": result["findings"],
+        "findings": result["findings"],
         "report": result["report"]
     }
 
+
+def _infer_document_type(filename: str) -> str:
+    name = filename.lower()
+    for doc_type in ["MSA", "SOW", "SLA", "NDA", "EXHIBIT", "PLAYBOOK", "LAW"]:
+        if doc_type.lower() in name:
+            return doc_type
+    return "MSA"

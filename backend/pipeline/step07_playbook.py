@@ -1,37 +1,45 @@
 """
-Step 7 — Playbook Validation (Claude agent)
+Step 7 - Playbook Validation.
 Compares clauses against active playbook rules and flags violations.
 """
-import json
+
 import uuid
-import anthropic
-import os
-from .config import PIPELINE_CONFIG
+
+from .llm_client import complete_json
 
 
 def validate_playbook(clauses: list[dict], playbook_rules: list[str]) -> list[dict]:
-    """
-    playbook_rules: list of plain-English rules, e.g.
-      ["Payment terms must not exceed 30 days",
-       "Liability must be capped at 1x annual fees"]
-    Returns RiskFindingDTO dicts for violations.
-    """
     if not playbook_rules:
         return []
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
     findings = []
     for clause in clauses:
-        result = _check_clause(client, clause, playbook_rules)
-        findings.extend(result)
+        if not _is_clause_relevant_to_rules(clause, playbook_rules):
+            continue
+        findings.extend(_check_clause(clause, playbook_rules))
     return findings
 
 
-def _check_clause(
-    client: anthropic.Anthropic,
-    clause: dict,
-    rules: list[str],
-) -> list[dict]:
-    rules_text = "\n".join(f"- {r}" for r in rules)
+def _is_clause_relevant_to_rules(clause: dict, rules: list[str]) -> bool:
+    rule_text = " ".join(rules).lower()
+    clause_text = f"{clause.get('title') or ''} {clause.get('text') or ''}".lower()
+    clause_type = clause.get("clauseType")
+
+    if any(word in rule_text for word in ("payment", "invoice", "net 30", "paid", "days")):
+        return clause_type == "payment" or any(
+            word in clause_text for word in ("payment", "invoice", "paid", "pay ", "net ")
+        )
+
+    keywords = {
+        token
+        for token in rule_text.replace("/", " ").replace("-", " ").split()
+        if len(token) >= 5
+    }
+    return any(keyword in clause_text for keyword in keywords)
+
+
+def _check_clause(clause: dict, rules: list[str]) -> list[dict]:
+    rules_text = "\n".join(f"- {rule}" for rule in rules)
     prompt = f"""You are a legal compliance checker.
 
 Playbook rules:
@@ -40,45 +48,50 @@ Playbook rules:
 Clause ({clause.get("documentName", "")}, section {clause.get("sectionNumber", "?")}):
 \"\"\"{clause["text"][:600]}\"\"\"
 
-Identify which playbook rules this clause VIOLATES (not just differs from).
+Identify which playbook rules this clause VIOLATES, not just differs from.
 Return ONLY JSON:
 {{
   "violations": [
     {{
       "rule": "<exact rule text>",
       "reason": "<one sentence explanation>",
-      "riskLevel": "low" | "medium" | "high" | "critical"
+      "riskLevel": "low"
     }}
   ]
 }}
-Return empty violations array if none.
+Allowed riskLevel values: low, medium, high, critical.
+Return an empty violations array if none.
 """
-    resp = client.messages.create(
-        model=PIPELINE_CONFIG["claude_model"],
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
     try:
-        data = json.loads(resp.content[0].text)
+        data = complete_json(prompt, max_tokens=512)
     except Exception:
         return []
 
     findings = []
-    for v in data.get("violations", []):
-        findings.append({
-            "id": f"r_{uuid.uuid4().hex[:8]}",
-            "clauseId": clause["id"],
-            "riskLevel": v.get("riskLevel", "medium"),
-            "status": "evaluated",
-            "reason": v.get("reason", ""),
-            "playbookRuleViolated": v.get("rule"),
-            "evidence": [{
-                "documentName": clause.get("documentName", ""),
-                "page": clause.get("page"),
-                "section": clause.get("sectionNumber"),
-                "quote": clause["text"][:300],
-            }],
-            "missingDocuments": None,
-            "redline": None,
-        })
+    for violation in data.get("violations", []):
+        findings.append(
+            {
+                "id": f"r_{uuid.uuid4().hex[:8]}",
+                "clauseId": clause["id"],
+                "riskLevel": _normalise_risk(violation.get("riskLevel", "medium")),
+                "status": "evaluated",
+                "reason": violation.get("reason", ""),
+                "playbookRuleViolated": violation.get("rule"),
+                "evidence": [
+                    {
+                        "documentName": clause.get("documentName", ""),
+                        "page": clause.get("page"),
+                        "section": clause.get("sectionNumber"),
+                        "quote": clause["text"][:300],
+                    }
+                ],
+                "missingDocuments": None,
+                "redline": None,
+            }
+        )
     return findings
+
+
+def _normalise_risk(raw: str) -> str:
+    risk = str(raw).lower().strip()
+    return risk if risk in {"low", "medium", "high", "critical"} else "medium"

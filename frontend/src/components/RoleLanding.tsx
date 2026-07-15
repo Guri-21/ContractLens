@@ -1,12 +1,14 @@
 import { useState } from 'react';
 
+type RoleKey = 'admin' | 'legal';
+
 interface RoleLandingProps {
-  onSelectRole: (role: 'admin' | 'legal') => void;
+  onSelectRole: (role: RoleKey) => void;
   accentColor: string;
 }
 
 export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingProps) {
-  const [loginRole, setLoginRole] = useState<'admin' | 'legal' | null>(null);
+  const [loginRole, setLoginRole] = useState<RoleKey | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,27 +44,32 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
     legal: { u: 'compliance@contractlens.com', p: 'compliance123', label: 'Legal & Compliance' }
   };
 
-  const handleTileClick = (tile: typeof roleTiles[number]) => {
+  const handleTileClick = async (tile: typeof roleTiles[number]) => {
     setError('');
-    setLoginRole(tile.key);
     const defaults = defaultCredentials[tile.key];
     if (defaults) {
       setEmail(defaults.u);
       setPassword(defaults.p);
+      await authenticate(tile.key, defaults.u, defaults.p);
     }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginRole) return;
+    await authenticate(loginRole, email, password);
+  };
+
+  const authenticate = async (roleKey: RoleKey, username: string, userPassword: string) => {
+    setLoginRole(roleKey);
     
     setLoading(true);
     setError('');
 
     try {
       const params = new URLSearchParams();
-      params.append('username', email);
-      params.append('password', password);
+      params.append('username', username);
+      params.append('password', userPassword);
 
       const response = await fetch('http://localhost:8000/api/auth/token', {
         method: 'POST',
@@ -84,8 +91,8 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       if (mappedRole === 'admin') expectedRoleKey = 'admin';
       else expectedRoleKey = 'legal'; // treat both legal reviewer and compliance officer as 'legal'
 
-      if (expectedRoleKey !== loginRole) {
-        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${loginRole === 'admin' ? 'Admin' : 'Legal & Compliance'} workspace.`);
+      if (expectedRoleKey !== roleKey) {
+        throw new Error(`Role mismatch. This account (${data.role}) is not authorized to access the ${roleKey === 'admin' ? 'Admin' : 'Legal & Compliance'} workspace.`);
       }
 
       // Store JWT token details in localStorage
@@ -94,7 +101,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       localStorage.setItem('role', data.role);
 
       setLoginRole(null);
-      onSelectRole(loginRole);
+      onSelectRole(roleKey);
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate');
     } finally {

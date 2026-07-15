@@ -164,7 +164,7 @@ export default function App() {
 
 
 
-  const currentNav = location.pathname.includes('/audit') ? 'audit' : location.pathname.replace('/', '') || 'contracts';
+  const currentNav = getCurrentNav(location.pathname, role);
 
   return (
     <>
@@ -176,8 +176,9 @@ export default function App() {
              if (n === 'audit') navigate('/admin/audit');
              else navigate('/admin');
            } else {
-             if (n === 'workspace') navigate('/legal/workspace');
-             else navigate('/legal');
+             if (n === 'dashboard') navigate('/legal');
+             else if (n === 'workspace') navigate('/legal/workspace');
+             else navigate(`/legal/${n}`);
            }
         }}
         accentKey={accentKey}
@@ -226,6 +227,48 @@ export default function App() {
           } />
           
           <Route path="/legal/workspace" element={<ReviewerWorkspace />} />
+          <Route path="/legal/risk" element={
+            <Dashboard
+              contracts={contractsList}
+              trendData={trendData}
+              deptData={deptData}
+              countryData={countryData}
+              clauseData={clauseData}
+              clauseTypeRisk={clauseTypeRisk}
+              riskTab={riskTab}
+              onSetRiskTab={setRiskTab}
+              activeNav={currentNav}
+              onOpenExportModal={() => setModalType('export')}
+            />
+          } />
+          <Route path="/legal/clause" element={
+            <Dashboard
+              contracts={contractsList}
+              trendData={trendData}
+              deptData={deptData}
+              countryData={countryData}
+              clauseData={clauseData}
+              clauseTypeRisk={clauseTypeRisk}
+              riskTab={riskTab}
+              onSetRiskTab={setRiskTab}
+              activeNav={currentNav}
+              onOpenExportModal={() => setModalType('export')}
+            />
+          } />
+          <Route path="/legal/business" element={
+            <Dashboard
+              contracts={contractsList}
+              trendData={trendData}
+              deptData={deptData}
+              countryData={countryData}
+              clauseData={clauseData}
+              clauseTypeRisk={clauseTypeRisk}
+              riskTab={riskTab}
+              onSetRiskTab={setRiskTab}
+              activeNav={currentNav}
+              onOpenExportModal={() => setModalType('export')}
+            />
+          } />
           
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
@@ -239,4 +282,17 @@ export default function App() {
       />
     </>
   );
+}
+
+function getCurrentNav(pathname: string, role: 'admin' | 'legal' | null): string {
+  if (role === 'legal') {
+    if (pathname === '/legal/workspace') return 'workspace';
+    if (pathname === '/legal/risk') return 'risk';
+    if (pathname === '/legal/clause') return 'clause';
+    if (pathname === '/legal/business') return 'business';
+    return 'dashboard';
+  }
+
+  if (pathname.includes('/audit')) return 'audit';
+  return 'contracts';
 }
