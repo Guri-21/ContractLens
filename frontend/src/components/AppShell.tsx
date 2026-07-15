@@ -48,6 +48,7 @@ export default function AppShell({
     { k: 'risk', label: 'Risk Analytics' },
     { k: 'clause', label: 'Clause Analytics' },
     { k: 'business', label: 'Business Analytics' },
+    { k: 'document-viewer', label: 'Document Viewer' },
   ];
 
   const navItems = isAdmin ? adminItems : legalItems;

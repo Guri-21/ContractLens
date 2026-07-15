@@ -8,6 +8,7 @@ import {
   roleMeta,
   initials
 } from '../mock/data';
+import PlaybookEditor from '../components/admin/PlaybookEditor';
 
 interface AdminProps {
   playbookVersions: PlaybookVersion[];
@@ -229,6 +230,10 @@ export default function Admin({
                 </tbody>
               </table>
             )}
+          </div>
+
+          <div className="mt-8">
+            <PlaybookEditor />
           </div>
         </div>
       )}

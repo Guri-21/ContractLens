@@ -7,6 +7,8 @@ import Admin from './pages/Admin';
 import AuditTrail from './pages/AuditTrail';
 import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
+import DocumentViewer from './pages/DocumentViewer';
+
 
 import { fetchBackendDocuments } from './api/documents';
 import { fetchAllRisks } from './api/analyze';
@@ -270,6 +272,8 @@ export default function App() {
             />
           } />
           
+          <Route path="/legal/document-viewer" element={<DocumentViewer />} />
+          
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AppShell>
@@ -290,6 +294,7 @@ function getCurrentNav(pathname: string, role: 'admin' | 'legal' | null): string
     if (pathname === '/legal/risk') return 'risk';
     if (pathname === '/legal/clause') return 'clause';
     if (pathname === '/legal/business') return 'business';
+    if (pathname === '/legal/document-viewer') return 'document-viewer';
     return 'dashboard';
   }
 
