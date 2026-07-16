@@ -1,11 +1,11 @@
 """
-Step 10 — Report Generation (Claude agent + templating)
-Produces an executive summary + structured findings JSON for PDF export.
+Step 10 - Report Generation.
+Produces an executive summary plus structured findings JSON for PDF export.
 """
+
 import json
-import anthropic
-import os
-from .config import PIPELINE_CONFIG
+
+from .llm_client import complete_text
 
 
 def generate_report(
@@ -14,8 +14,7 @@ def generate_report(
     risk_score: dict,
     document_names: list[str],
 ) -> dict:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    summary = _executive_summary(client, clauses, findings, risk_score, document_names)
+    summary = _executive_summary(findings, risk_score, document_names)
     return {
         "executiveSummary": summary,
         "overallScore": risk_score["overallScore"],
@@ -27,26 +26,23 @@ def generate_report(
     }
 
 
-def _executive_summary(
-    client: anthropic.Anthropic,
-    clauses: list[dict],
-    findings: list[dict],
-    risk_score: dict,
-    document_names: list[str],
-) -> str:
-    critical = [f for f in findings if f.get("riskLevel") == "critical"]
-    high = [f for f in findings if f.get("riskLevel") == "high"]
-    not_eval = [f for f in findings if f.get("status") == "not_evaluated"]
-
-    findings_summary = json.dumps([
-        {
-            "reason": f["reason"],
-            "riskLevel": f.get("riskLevel"),
-            "status": f["status"],
-            "playbookRuleViolated": f.get("playbookRuleViolated"),
-        }
-        for f in findings[:15]  # cap to avoid token overflow
-    ], indent=2)
+def _executive_summary(findings: list[dict], risk_score: dict, document_names: list[str]) -> str:
+    critical = [finding for finding in findings if finding.get("riskLevel") == "critical"]
+    high = [finding for finding in findings if finding.get("riskLevel") == "high"]
+    not_eval = [finding for finding in findings if finding.get("status") == "not_evaluated"]
+    findings_summary = json.dumps(
+        [
+            {
+                "reason": finding["reason"],
+                "riskLevel": finding.get("riskLevel"),
+                "status": finding["status"],
+                "playbookRuleViolated": finding.get("playbookRuleViolated"),
+                "missingDocuments": finding.get("missingDocuments"),
+            }
+            for finding in findings[:15]
+        ],
+        indent=2,
+    )
 
     prompt = f"""You are a legal risk analyst writing an executive summary.
 
@@ -61,9 +57,4 @@ Write a 3-5 sentence executive summary for a senior manager.
 Be factual and specific. Do NOT fabricate numbers not given to you.
 Mention the most serious risks and any missing documents by name.
 """
-    resp = client.messages.create(
-        model=PIPELINE_CONFIG["claude_model"],
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return resp.content[0].text.strip()
+    return complete_text(prompt, max_tokens=400).strip()

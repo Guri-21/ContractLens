@@ -1,38 +1,55 @@
 import React, { useState } from 'react';
 import { UploadCloud, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { uploadDocument } from '../../api/documents';
+import { fetchBackendAnalyze } from '../../api/analyze';
 
 type UploadStatus = 'idle' | 'uploading' | 'parsing' | 'analyzing' | 'done';
 
 interface UploadFlowProps {
-  onComplete: () => void;
+  onComplete: (data: { clauses: any[], risks: any[] }) => void;
 }
 
 export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [files, setFiles] = useState<File[]>([]);
-  const [playbook, setPlaybook] = useState('v1.0');
-  const [country, setCountry] = useState('US');
+  const [playbook, setPlaybook] = useState('active-demo-playbook');
+  const [country, setCountry] = useState('IN');
   const [contractType, setContractType] = useState('MSA');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files).slice(0, 2); // Max 2 docs
-      setFiles(selectedFiles);
+      const selectedFiles = Array.from(e.target.files);
+      setFiles((currentFiles) => {
+        const byName = new Map(currentFiles.map((file) => [file.name, file]));
+        selectedFiles.forEach((file) => byName.set(file.name, file));
+        return Array.from(byName.values()).slice(0, 2);
+      });
+      e.target.value = '';
     }
   };
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
+    if (files.length === 0) return;
     setStatus('uploading');
-    setTimeout(() => {
-      setStatus('parsing');
-      setTimeout(() => {
-        setStatus('analyzing');
-        setTimeout(() => {
-          setStatus('done');
-          onComplete();
-        }, 1500);
-      }, 1500);
-    }, 1000);
+    
+    try {
+      // 1. Upload files
+      const documentIds: string[] = [];
+      for (const file of files) {
+        const res = await uploadDocument(file);
+        documentIds.push(res.documentId);
+      }
+      
+      setStatus('analyzing');
+      // 2. Trigger analysis
+      const data = await fetchBackendAnalyze(documentIds, playbook, country);
+      
+      setStatus('done');
+      onComplete(data);
+    } catch (err) {
+      console.error(err);
+      setStatus('idle');
+    }
   };
 
   return (
@@ -77,8 +94,8 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
               onChange={(e) => setPlaybook(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
             >
-              <option value="v1.0">Standard v1.0</option>
-              <option value="v2.0">Enterprise v2.0</option>
+              <option value="active-demo-playbook">Demo Playbook - Net 30 Payment</option>
+              <option value="standard-v1">Standard v1.0</option>
             </select>
           </div>
           <div>
@@ -88,6 +105,7 @@ export const UploadFlow: React.FC<UploadFlowProps> = ({ onComplete }) => {
               onChange={(e) => setCountry(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border"
             >
+              <option value="IN">India</option>
               <option value="US">United States</option>
               <option value="UK">United Kingdom</option>
               <option value="EU">European Union</option>

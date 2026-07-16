@@ -18,3 +18,16 @@ async def get_playbook(db: Prisma = Depends(get_db), current_user = Depends(requ
 @router.post("/")
 async def create_playbook_rule(rule: PlaybookCreate, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin", "Legal Reviewer"]))):
     return await db.playbookrule.create(data=rule.dict())
+
+@router.put("/{id}")
+async def update_playbook_rule(id: str, rule: PlaybookCreate, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin", "Legal Reviewer"]))):
+    return await db.playbookrule.update(
+        where={"id": id},
+        data=rule.dict()
+    )
+
+@router.delete("/{id}")
+async def delete_playbook_rule(id: str, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin", "Legal Reviewer"]))):
+    await db.playbookrule.delete(where={"id": id})
+    return {"status": "success"}
+
