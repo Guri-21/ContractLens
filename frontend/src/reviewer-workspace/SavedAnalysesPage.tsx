@@ -43,7 +43,7 @@ export const SavedAnalysesPage: React.FC = () => {
     }
     setError('');
     try {
-      const result = await fetchBackendDocuments();
+      const result = await fetchBackendDocuments({ force: true });
       const persisted = result as PersistedDocument[];
       setCachedSavedAnalysisDocuments(persisted, ownerKey);
       setDocuments(persisted);
