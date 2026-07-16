@@ -253,7 +253,7 @@ npm test -- --run
 
 ContractLens should never say "probably" when legal source data is missing. Every risk must show evidence, and missing exhibits or governing documents must produce a refusal state instead of an invented answer.
 
-##Team 6
+## Team Number - 6
 
 - Gurnoor Partap Singh Bhogal
 - Himani Agarwal
