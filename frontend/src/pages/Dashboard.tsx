@@ -1,6 +1,5 @@
 import {
   Contract,
-  TrendRecord,
   DeptRecord,
   CountryRecord,
   ClauseRecord,
@@ -71,25 +70,6 @@ export default function Dashboard({
     avgRisk: countryMap[k].scoredCount > 0 ? Math.round(countryMap[k].totalScore / countryMap[k].scoredCount) : 0
   })).sort((a, b) => b.contracts - a.contracts);
 
-  const trendMap: Record<string, { count: number, totalScore: number, order: number }> = {};
-  scored.forEach(c => {
-    const date = new Date(c.iso);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    if (!trendMap[key]) trendMap[key] = { count: 0, totalScore: 0, order: date.getFullYear() * 12 + date.getMonth() };
-    trendMap[key].count += 1;
-    trendMap[key].totalScore += c.score;
-  });
-  const trendData: TrendRecord[] = Object.keys(trendMap).sort((a, b) => trendMap[a].order - trendMap[b].order).slice(-8).map(k => ({
-    m: new Date(`${k}-01T00:00:00`).toLocaleString('en-US', { month: 'short' }),
-    v: Math.round(trendMap[k].totalScore / trendMap[k].count)
-  }));
-  if (trendData.length === 0) {
-    trendData.push({ m: 'Current', v: 0 });
-    trendData.unshift({ m: 'Prev', v: 0 });
-  } else if (trendData.length === 1) {
-    trendData.unshift({ m: 'Prev', v: trendData[0].v });
-  }
-
   const clauseMap: Record<string, { flagged: number, critical: number, severityTotal: number }> = {};
   const severityWeights: Record<string, number> = { low: 24, medium: 48, high: 72, critical: 94 };
   normalizedRisks.forEach(r => {
@@ -144,28 +124,6 @@ export default function Dashboard({
       pct: `${pct}%`
     };
   });
-
-  // Trend SVG line & area computations
-  const n = trendData.length;
-  const trendValues = trendData.map((d) => d.v);
-  const rawMin = Math.min(...trendValues);
-  const rawMax = Math.max(...trendValues);
-  const vmin = Math.max(0, Math.floor((rawMin - 8) / 5) * 5);
-  const vmax = Math.min(100, Math.ceil((rawMax + 8) / 5) * 5);
-  const w = 680, h = 220, pl = 44, pr = 16, pt = 16, pb = 30;
-  const px = (i: number) => pl + (i * (w - pl - pr)) / (n - 1);
-  const py = (val: number) => pt + ((vmax - val) / (vmax - vmin)) * (h - pt - pb);
-  const linePts = trendData.map((d, i) => `${px(i).toFixed(1)},${py(d.v).toFixed(1)}`).join(' ');
-  const baseY = h - pb;
-  const areaPath =
-    `M ${px(0).toFixed(1)},${baseY} ` +
-    trendData.map((d, i) => `L ${px(i).toFixed(1)},${py(d.v).toFixed(1)}`).join(' ') +
-    ` L ${px(n - 1).toFixed(1)},${baseY} Z`;
-  const trendDots = trendData.map((d, i) => ({ cx: px(i).toFixed(1), cy: py(d.v).toFixed(1), label: d.m }));
-  const gridStep = Math.max(5, Math.ceil((vmax - vmin) / 4 / 5) * 5);
-  const trendGrid = Array.from({ length: 5 }, (_, idx) => vmin + idx * gridStep)
-    .filter((val) => val <= vmax)
-    .map((val) => ({ y: py(val).toFixed(1), ty: (py(val) + 4).toFixed(1), val }));
 
   // KPI metadata lists
   const kpis = [
@@ -241,6 +199,27 @@ export default function Dashboard({
         riskStyle: pillStyle(meta.soft, meta.text)
       };
     });
+
+  const packageMap: Record<string, { label: string; docs: number; total: number; max: number; levels: string[] }> = {};
+  scored.forEach((contract) => {
+    const label = contract.client || contract.name.replace(/\.[^.]+$/, '');
+    if (!packageMap[label]) {
+      packageMap[label] = { label, docs: 0, total: 0, max: 0, levels: [] };
+    }
+    packageMap[label].docs += 1;
+    packageMap[label].total += contract.score;
+    packageMap[label].max = Math.max(packageMap[label].max, contract.score);
+    packageMap[label].levels.push(contract.level || 'low');
+  });
+  const packageRisks = Object.values(packageMap)
+    .map((item) => ({
+      ...item,
+      avg: Math.round(item.total / Math.max(1, item.docs)),
+      level: levelFor(item.max) || 'low',
+      widthPercent: `${Math.max(8, item.max)}%`,
+    }))
+    .sort((a, b) => b.max - a.max)
+    .slice(0, 8);
 
   // Risk Analytics Breakdown Tabs
   const currentBreakdownSrc =
@@ -355,36 +334,33 @@ export default function Dashboard({
               </div>
             </div>
 
-            {/* Average Risk Score Card */}
+            {/* Contract Package Risk Card */}
             <div className="bg-white border border-[#E2E8F0] rounded p-5 px-5.5">
-              <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-2">
-                Average risk score — trailing 8 months
+              <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-4">
+                Risk by contract package
               </div>
-              <div className="relative">
-                <svg viewBox="0 0 680 220" className="w-full h-auto">
-                  {/* Grid Lines */}
-                  {trendGrid.map((g, idx) => (
-                    <g key={idx}>
-                      <line x1="44" y1={g.y} x2="664" y2={g.y} stroke="#F1F5F9" strokeWidth="1"></line>
-                      <text x="34" y={g.ty} textAnchor="end" fontSize="11" fill="#94A3B8" fontFamily="IBM Plex Mono">
-                        {g.val}
-                      </text>
-                    </g>
-                  ))}
-                  {/* Area fill */}
-                  <path d={areaPath} fill="var(--accent)" fillOpacity="0.08"></path>
-                  {/* Trend line */}
-                  <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"></polyline>
-                  {/* Grid Dots */}
-                  {trendDots.map((p, idx) => (
-                    <g key={idx}>
-                      <circle cx={p.cx} cy={p.cy} r="3.5" fill="#fff" stroke="var(--accent)" strokeWidth="2"></circle>
-                      <text x={p.cx} y="212" textAnchor="middle" fontSize="11" fill="#94A3B8" fontFamily="IBM Plex Mono">
-                        {p.label}
-                      </text>
-                    </g>
-                  ))}
-                </svg>
+              <div className="flex flex-col gap-3">
+                {packageRisks.map((pkg) => {
+                  const meta = riskMeta[pkg.level];
+                  return (
+                    <div key={pkg.label} className="grid grid-cols-[150px_1fr_82px] items-center gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold text-[#0F172A] truncate">{pkg.label}</div>
+                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - avg {pkg.avg}</div>
+                      </div>
+                      <div className="h-7 bg-[#F8FAFC] border border-[#EEF2F7] rounded-sm overflow-hidden">
+                        <div
+                          className="h-full rounded-sm animate-cl-grow origin-left"
+                          style={{ width: pkg.widthPercent, background: meta.color }}
+                        ></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.max}</div>
+                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>{meta.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -428,7 +404,7 @@ export default function Dashboard({
               Risk Analytics
             </h1>
             <p className="text-[#64748B] text-sm mt-1.5">
-              Distribution, trend, and how risk concentrates across the organization.
+              Distribution, package exposure, and how risk concentrates across the organization.
             </p>
           </div>
 
@@ -470,31 +446,34 @@ export default function Dashboard({
               </div>
             </div>
 
-            {/* Average Risk Score Trend Card */}
+            {/* Contract Package Risk Card */}
             <div className="bg-white border border-[#E2E8F0] rounded p-5 px-5.5">
-              <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-2">
-                Average risk score trend
+              <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-4">
+                Risk by contract package
               </div>
-              <svg viewBox="0 0 680 220" className="w-full h-auto">
-                {trendGrid.map((g, idx) => (
-                  <g key={idx}>
-                    <line x1="44" y1={g.y} x2="664" y2={g.y} stroke="#F1F5F9" strokeWidth="1"></line>
-                    <text x="34" y={g.ty} textAnchor="end" fontSize="11" fill="#94A3B8" fontFamily="IBM Plex Mono">
-                      {g.val}
-                    </text>
-                  </g>
-                ))}
-                <path d={areaPath} fill="var(--accent)" fillOpacity="0.08"></path>
-                <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"></polyline>
-                {trendDots.map((p, idx) => (
-                  <g key={idx}>
-                    <circle cx={p.cx} cy={p.cy} r="3.5" fill="#fff" stroke="var(--accent)" strokeWidth="2"></circle>
-                    <text x={p.cx} y="212" textAnchor="middle" fontSize="11" fill="#94A3B8" fontFamily="IBM Plex Mono">
-                      {p.label}
-                    </text>
-                  </g>
-                ))}
-              </svg>
+              <div className="flex flex-col gap-3">
+                {packageRisks.map((pkg) => {
+                  const meta = riskMeta[pkg.level];
+                  return (
+                    <div key={pkg.label} className="grid grid-cols-[150px_1fr_82px] items-center gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold text-[#0F172A] truncate">{pkg.label}</div>
+                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - avg {pkg.avg}</div>
+                      </div>
+                      <div className="h-7 bg-[#F8FAFC] border border-[#EEF2F7] rounded-sm overflow-hidden">
+                        <div
+                          className="h-full rounded-sm animate-cl-grow origin-left"
+                          style={{ width: pkg.widthPercent, background: meta.color }}
+                        ></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.max}</div>
+                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>{meta.label}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -769,3 +748,4 @@ export default function Dashboard({
     </div>
   );
 }
+
