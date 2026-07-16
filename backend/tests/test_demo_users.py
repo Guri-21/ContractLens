@@ -70,8 +70,9 @@ class FakeUserTable:
 
     async def find_many(self, where=None, include=None, order=None):
         assert include == {"role": True}
-        role_names = set(where["role"]["is"]["name"]["in"])
-        return [user for user in self.users if user.role.name in role_names]
+        email_filter = set(where["AND"][0]["email"]["in"])
+        role_names = set(where["AND"][1]["role"]["is"]["name"]["in"])
+        return [user for user in self.users if user.email in email_filter and user.role.name in role_names]
 
 
 class FakeDatabase:

@@ -143,13 +143,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def list_demo_users(db: Prisma = Depends(get_db)):
     users = await db.user.find_many(
         where={
-            "role": {
-                "is": {
-                    "name": {
-                        "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
+            "AND": [
+                {"email": {"in": DEMO_USER_EMAILS}},
+                {
+                    "role": {
+                        "is": {
+                            "name": {
+                                "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
+                            }
+                        }
                     }
-                }
-            }
+                },
+            ]
         },
         include={"role": True},
         order={"email": "asc"},
@@ -160,13 +165,18 @@ async def list_demo_users(db: Prisma = Depends(get_db)):
         await ensure_seeded_access_users(db, repair_passwords=False)
         users = await db.user.find_many(
             where={
-                "role": {
-                    "is": {
-                        "name": {
-                            "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
+                "AND": [
+                    {"email": {"in": DEMO_USER_EMAILS}},
+                    {
+                        "role": {
+                            "is": {
+                                "name": {
+                                    "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
+                                }
+                            }
                         }
-                    }
-                }
+                    },
+                ]
             },
             include={"role": True},
             order={"email": "asc"},
