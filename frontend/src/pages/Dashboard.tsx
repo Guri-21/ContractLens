@@ -17,6 +17,13 @@ interface DashboardProps {
   onOpenExportModal: () => void;
 }
 
+type AnalyticsContract = Contract & {
+  score: number;
+  level: string;
+  highFindingCount?: number;
+  criticalFindingCount?: number;
+};
+
 export default function Dashboard({
   contracts,
   globalRisks = [],
@@ -33,10 +40,12 @@ export default function Dashboard({
   }));
 
   // Dynamic calculations based on contracts list
-  const scored = contracts.filter((c) => c.level && c.score !== null) as (Contract & { score: number; level: string })[];
+  const scored = contracts.filter((c) => c.level && c.score !== null) as AnalyticsContract[];
   const reviewed = contracts.filter((c) => c.status === 'reviewed').length;
   const pending = contracts.filter((c) => c.status === 'queued' || c.status === 'processing').length;
-  const highRisk = scored.filter((c) => c.level === 'high' || c.level === 'critical').length;
+  const hasHighRiskFindings = (contract: AnalyticsContract) =>
+    (contract.highFindingCount || 0) > 0 || contract.level === 'high' || contract.level === 'critical';
+  const highRisk = scored.filter(hasHighRiskFindings).length;
   const avg = scored.length > 0 ? Math.round(scored.reduce((a, c) => a + c.score, 0) / scored.length) : 0;
 
   // Dynamically compute aggregated data
@@ -186,16 +195,20 @@ export default function Dashboard({
     { label: 'Departments', value: deptData.length, color: '#0F172A', caption: 'submitting contracts' }
   ];
 
-  // High risk list view (Overview page)
   const highRiskList = scored
-    .filter((c) => c.level === 'high' || c.level === 'critical')
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .filter(hasHighRiskFindings)
+    .sort((a, b) =>
+      ((b.criticalFindingCount || 0) - (a.criticalFindingCount || 0))
+      || ((b.highFindingCount || 0) - (a.highFindingCount || 0))
+      || ((b.score || 0) - (a.score || 0))
+    )
     .slice(0, 5)
     .map((c) => {
-      const meta = riskMeta[c.level];
+      const derivedLevel = (c.criticalFindingCount || 0) > 0 ? 'critical' : (c.highFindingCount || 0) > 0 ? 'high' : c.level;
+      const meta = riskMeta[derivedLevel as keyof typeof riskMeta];
       return {
         ...c,
-        riskLabel: `${meta.label} • ${c.score}`,
+        riskLabel: `${meta.label} - ${c.highFindingCount || 0} findings`,
         riskStyle: pillStyle(meta.soft, meta.text)
       };
     });
@@ -206,9 +219,13 @@ export default function Dashboard({
     if (!packageMap[label]) {
       packageMap[label] = { label, docs: 0, exposure: 0, highDocs: 0, maxScore: 0, level: 'low' };
     }
-    const highRiskDoc = contract.level === 'high' || contract.level === 'critical';
+    const highRiskDoc = hasHighRiskFindings(contract);
     packageMap[label].docs += 1;
-    packageMap[label].exposure += highRiskDoc ? 2 : contract.level === 'medium' ? 1 : 0;
+    packageMap[label].exposure += (contract.criticalFindingCount || 0) * 2
+      + Math.max(0, (contract.highFindingCount || 0) - (contract.criticalFindingCount || 0));
+    if (packageMap[label].exposure === 0 && contract.level === 'medium') {
+      packageMap[label].exposure += 1;
+    }
     packageMap[label].highDocs += highRiskDoc ? 1 : 0;
     packageMap[label].maxScore = Math.max(packageMap[label].maxScore, contract.score);
     packageMap[label].level = levelFor(packageMap[label].maxScore) || 'low';

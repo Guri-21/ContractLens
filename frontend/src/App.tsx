@@ -173,6 +173,8 @@ function mapDocumentToContract(document: BackendDocument): Contract {
     level: levelFor(score),
     reviewer: document.assigned_to?.email || 'Unassigned',
     rt: 1,
+    highFindingCount: risks.filter((risk) => risk.riskLevel === 'high' || risk.riskLevel === 'critical').length,
+    criticalFindingCount: risks.filter((risk) => risk.riskLevel === 'critical').length,
   };
 }
 

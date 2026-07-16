@@ -31,6 +31,8 @@ export interface Contract {
   level: 'low' | 'medium' | 'high' | 'critical' | null;
   reviewer: string;
   rt: number | null;
+  highFindingCount?: number;
+  criticalFindingCount?: number;
 }
 
 export interface RuleSet {
