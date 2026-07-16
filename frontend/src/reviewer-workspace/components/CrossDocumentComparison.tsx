@@ -1,15 +1,18 @@
 import React from 'react';
 import { AlertTriangle, Check, X, Edit3 } from 'lucide-react';
 import { RiskFindingDTO } from '../types';
+import type { ReviewerDecision } from '../reviewerDecisions';
+import { decisionLabel } from '../reviewerDecisions';
 
 interface CrossDocumentComparisonProps {
   finding: RiskFindingDTO;
   onAccept: (findingId: string) => void;
   onReject: (findingId: string) => void;
   onEdit: (findingId: string) => void;
+  decision?: ReviewerDecision;
 }
 
-export const CrossDocumentComparison: React.FC<CrossDocumentComparisonProps> = ({ finding, onAccept, onReject, onEdit }) => {
+export const CrossDocumentComparison: React.FC<CrossDocumentComparisonProps> = ({ finding, onAccept, onReject, onEdit, decision }) => {
   const hasComparisonText = finding.comparisonText && finding.comparisonText.sowText && finding.comparisonText.msaText;
   const hasEvidence = finding.evidence && finding.evidence.length >= 2;
 
@@ -84,26 +87,34 @@ export const CrossDocumentComparison: React.FC<CrossDocumentComparisonProps> = (
       <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100 bg-legal-surface shadow-sm border border-legal-border rounded-md overflow-hidden">
         <button 
           onClick={() => onAccept(finding.id)} 
+          disabled={decision === 'accepted'}
           className="flex items-center px-2.5 py-1.5 bg-white text-legal-text text-[11px] font-mono font-medium hover:bg-green-50 hover:text-green-800 transition-colors border-r border-legal-border"
           title="Accept Suggestion"
         >
-          <Check className="h-3 w-3 mr-1" /> Accept
+          <Check className="h-3 w-3 mr-1" /> {decision === 'accepted' ? 'Accepted' : 'Accept'}
         </button>
         <button 
           onClick={() => onEdit(finding.id)} 
+          disabled={decision === 'modified'}
           className="flex items-center px-2.5 py-1.5 bg-white text-legal-text text-[11px] font-mono font-medium hover:bg-blue-50 hover:text-blue-800 transition-colors border-r border-legal-border"
           title="Edit Manually"
         >
-          <Edit3 className="h-3 w-3 mr-1" /> Edit
+          <Edit3 className="h-3 w-3 mr-1" /> {decision === 'modified' ? 'Modifying' : 'Edit'}
         </button>
         <button 
           onClick={() => onReject(finding.id)} 
+          disabled={decision === 'rejected'}
           className="flex items-center px-2.5 py-1.5 bg-white text-legal-text text-[11px] font-mono font-medium hover:bg-red-50 hover:text-red-800 transition-colors"
           title="Reject"
         >
-          <X className="h-3 w-3 mr-1" /> Reject
+          <X className="h-3 w-3 mr-1" /> {decision === 'rejected' ? 'Rejected' : 'Reject'}
         </button>
       </div>
+      {decision && (
+        <div className="border-t border-legal-border bg-legal-bg px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-legal-focus">
+          {decisionLabel(decision)}
+        </div>
+      )}
 
     </div>
   );

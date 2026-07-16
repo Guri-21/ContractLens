@@ -6,14 +6,23 @@ import { RedlineView } from './RedlineView';
 import { InlineClauseEditor } from './InlineClauseEditor';
 import { CrossDocumentComparison } from './CrossDocumentComparison';
 import { VersionComparison } from '../../shared-components/VersionComparison';
+import type { ReviewerDecision, ReviewerDecisionMap } from '../reviewerDecisions';
 
 interface ClauseViewerProps {
   clauses: ClauseDTO[];
   risks: RiskFindingDTO[];
   isLocked?: boolean;
+  reviewerDecisions?: ReviewerDecisionMap;
+  onReviewerDecision?: (riskId: string, decision: ReviewerDecision) => void;
 }
 
-export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLocked = false }) => {
+export const ClauseViewer: React.FC<ClauseViewerProps> = ({
+  clauses,
+  risks,
+  isLocked = false,
+  reviewerDecisions = {},
+  onReviewerDecision,
+}) => {
   const [selectedClauseId, setSelectedClauseId] = useState<string | null>(clauses.length > 0 ? clauses[0].id : null);
   const [editingClauseId, setEditingClauseId] = useState<string | null>(null);
   
@@ -82,6 +91,11 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
     if (clauseRisks.length === 0) return 'border-green-200 bg-green-50/65 hover:bg-green-50';
     if (clauseRisks.some(r => r.status === 'not_evaluated')) return 'border-amber-200 bg-amber-50/65 hover:bg-amber-50';
     return 'border-red-200 bg-red-50/65 hover:bg-red-50';
+  };
+
+  const recordDecision = (riskId: string, decision: ReviewerDecision) => {
+    if (isLocked) return;
+    onReviewerDecision?.(riskId, decision);
   };
 
   return (
@@ -239,9 +253,13 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                         {(risk.evidence && risk.evidence.length > 1) || (risk.comparisonText) ? (
                           <CrossDocumentComparison 
                             finding={risk} 
-                            onAccept={() => { if (!isLocked) console.log('Accept'); }}
-                            onReject={() => { if (!isLocked) console.log('Reject'); }}
-                            onEdit={() => { if (!isLocked) setEditingClauseId(selectedClause.id); }}
+                            decision={reviewerDecisions[risk.id]}
+                            onAccept={() => recordDecision(risk.id, 'accepted')}
+                            onReject={() => recordDecision(risk.id, 'rejected')}
+                            onEdit={() => {
+                              recordDecision(risk.id, 'modified');
+                              setEditingClauseId(selectedClause.id);
+                            }}
                           />
                         ) : risk.evidence && risk.evidence.length === 1 ? (
                            <div className="mt-4 border-l-2 border-legal-meta pl-3">
@@ -260,9 +278,13 @@ export const ClauseViewer: React.FC<ClauseViewerProps> = ({ clauses, risks, isLo
                             <RedlineView 
                               originalText={risk.redline.originalText}
                               suggestedText={risk.redline.suggestedText}
-                              onAccept={() => console.log('Accepted redline')}
-                              onReject={() => console.log('Rejected redline')}
-                              onModify={() => console.log('Modify redline')}
+                              decision={reviewerDecisions[risk.id]}
+                              onAccept={() => recordDecision(risk.id, 'accepted')}
+                              onReject={() => recordDecision(risk.id, 'rejected')}
+                              onModify={() => {
+                                recordDecision(risk.id, 'modified');
+                                setEditingClauseId(selectedClause.id);
+                              }}
                             />
                           </div>
                         )}

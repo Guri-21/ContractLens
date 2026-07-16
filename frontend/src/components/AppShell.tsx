@@ -14,6 +14,7 @@ interface AppShellProps {
   onChangeAccent: (accent: 'gold' | 'crimson') => void;
   onSwitchRole: () => void;
   pendingContractsCount: number;
+  userEmail?: string | null;
   children: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export default function AppShell({
   onChangeAccent,
   onSwitchRole,
   pendingContractsCount,
+  userEmail,
   children
 }: AppShellProps) {
   const isAdmin = role === 'admin';
@@ -32,8 +34,8 @@ export default function AppShell({
   const workspaceLabel = isAdmin ? 'Admin Console' : 'Legal Review & Analytics';
   const sectionLabel = isAdmin ? 'Administration' : 'Workspace';
   const roleLabel = isAdmin ? 'Admin' : 'Legal Advisor';
-  const userName = isAdmin ? 'Jordan Okafor' : 'Alex Chen';
-  const userInitials = isAdmin ? 'JO' : 'AC';
+  const displayEmail = userEmail || (isAdmin ? 'admin@contractlens.com' : 'advisor@contractlens.com');
+  const userInitials = getInitials(displayEmail);
 
   const adminItems: NavItem[] = [
     { k: 'playbook', label: 'Playbook' },
@@ -102,7 +104,7 @@ export default function AppShell({
               {userInitials}
             </div>
             <div className="hidden leading-tight md:block">
-              <div className="text-[13px] font-semibold text-[#F8FAFC] whitespace-nowrap">{userName}</div>
+              <div className="max-w-[220px] truncate text-[13px] font-semibold text-[#F8FAFC]" title={displayEmail}>{displayEmail}</div>
               <div className="text-[11px] text-[#94A3B8]">{roleLabel}</div>
             </div>
           </div>
@@ -175,3 +177,13 @@ export default function AppShell({
   );
 }
 
+function getInitials(email: string): string {
+  const localPart = email.split('@')[0] || email;
+  const initials = localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('');
+  return initials || email[0]?.toUpperCase() || 'U';
+}

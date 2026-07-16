@@ -66,7 +66,7 @@ export default function App() {
 function LegalAdvisorPortal() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, email } = useAuth();
   const [accentKey, setAccentKey] = useState<'gold' | 'crimson'>('gold');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [risks, setRisks] = useState<unknown[]>([]);
@@ -141,6 +141,7 @@ function LegalAdvisorPortal() {
         onChangeAccent={setAccentKey}
         onSwitchRole={logout}
         pendingContractsCount={pendingContracts}
+        userEmail={email}
       >
         <Routes>
           <Route index element={<Navigate to="workspace" replace />} />

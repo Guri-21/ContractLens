@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
 import { UploadFlow } from './components/UploadFlow';
 import { ClauseViewer } from './components/ClauseViewer';
@@ -10,8 +10,15 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { ClauseDTO, RiskFindingDTO } from './types';
 import { ReportExport } from '../reports/ReportExport';
 import { DependencyGraph } from '../shared-components/DependencyGraph';
+import {
+  applyReviewerDecisions,
+  loadReviewerDecisions,
+  saveReviewerDecision,
+  type ReviewerDecision,
+  type ReviewerDecisionMap,
+} from './reviewerDecisions';
 
-type AnalysisTab = 'overview' | 'clauses' | 'risks' | 'graph' | 'redlines' | 'audit';
+type AnalysisTab = 'overview' | 'clauses' | 'risks' | 'graph' | 'redlines' | 'advice' | 'audit';
 
 const TABS: Array<{ id: AnalysisTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -19,6 +26,7 @@ const TABS: Array<{ id: AnalysisTab; label: string }> = [
   { id: 'risks', label: 'Risks' },
   { id: 'graph', label: 'Dependency Graph' },
   { id: 'redlines', label: 'Redlines' },
+  { id: 'advice', label: 'Legal Advice' },
   { id: 'audit', label: 'Audit & Export' },
 ];
 
@@ -36,8 +44,16 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
   const [isUploaded, setIsUploaded] = useState(readOnlyAnalysis || initialClauses.length > 0);
   const [clauses, setClauses] = useState<ClauseDTO[]>(initialClauses);
   const [risks, setRisks] = useState<RiskFindingDTO[]>(initialRisks);
+  const [reviewerDecisions, setReviewerDecisions] = useState<ReviewerDecisionMap>(() => loadReviewerDecisions());
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>('draft');
   const [activeTab, setActiveTab] = useState<AnalysisTab>('overview');
+  const activeRisks = useMemo(
+    () => applyReviewerDecisions(risks, reviewerDecisions),
+    [reviewerDecisions, risks],
+  );
+  const recordReviewerDecision = (riskId: string, decision: ReviewerDecision) => {
+    setReviewerDecisions(saveReviewerDecision(riskId, decision));
+  };
 
   if (!isUploaded && !readOnlyAnalysis) {
     return (
@@ -54,9 +70,9 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
     );
   }
 
-  const highRiskCount = risks.filter(r => r.riskLevel === 'critical' || r.riskLevel === 'high').length;
-  const notEvaluatedCount = risks.filter(r => r.status === 'not_evaluated').length;
-  const cleanClauses = clauses.filter(clause => !risks.some(risk => risk.clauseId === clause.id)).length;
+  const highRiskCount = activeRisks.filter(r => r.riskLevel === 'critical' || r.riskLevel === 'high').length;
+  const notEvaluatedCount = activeRisks.filter(r => r.status === 'not_evaluated').length;
+  const cleanClauses = clauses.filter(clause => !activeRisks.some(risk => risk.clauseId === clause.id)).length;
   const score = Math.max(0, 100 - highRiskCount * 5 - notEvaluatedCount * 3);
 
   return (
@@ -98,16 +114,22 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
           {activeTab === 'overview' && (
             <OverviewTab
               clauses={clauses}
-              risks={risks}
+              risks={activeRisks}
               cleanClauses={cleanClauses}
               highRiskCount={highRiskCount}
               notEvaluatedCount={notEvaluatedCount}
             />
           )}
           {activeTab === 'clauses' && (
-            <ClauseViewer clauses={clauses} risks={risks} isLocked={documentStatus === 'approved'} />
+            <ClauseViewer
+              clauses={clauses}
+              risks={activeRisks}
+              reviewerDecisions={reviewerDecisions}
+              onReviewerDecision={recordReviewerDecision}
+              isLocked={documentStatus === 'approved'}
+            />
           )}
-          {activeTab === 'risks' && <RisksTab clauses={clauses} risks={risks} />}
+          {activeTab === 'risks' && <RisksTab clauses={clauses} risks={activeRisks} />}
           {activeTab === 'graph' && (
             <div className="flex h-full min-h-0 flex-col p-4 sm:p-6">
               <div className="flex-shrink-0">
@@ -117,17 +139,18 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
                 </div>
               </div>
               <div className="mt-4 min-h-0 flex-1 overflow-hidden border border-legal-border bg-white shadow-sm">
-                <DependencyGraph clauses={clauses} risks={risks} />
+                <DependencyGraph clauses={clauses} risks={activeRisks} />
               </div>
             </div>
           )}
-          {activeTab === 'redlines' && <RedlinesTab clauses={clauses} risks={risks} />}
+          {activeTab === 'redlines' && <RedlinesTab clauses={clauses} risks={activeRisks} />}
+          {activeTab === 'advice' && <LegalAdviceTab clauses={clauses} risks={activeRisks} />}
           {activeTab === 'audit' && (
             <div className="h-full overflow-y-auto p-6 cl-scroll">
               <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_320px]">
                 <ApprovalPanel status={documentStatus} onUpdateStatus={(newStatus) => setDocumentStatus(newStatus)} />
-                <ReportExport findings={risks} score={score} />
-                <AuditSummary clauses={clauses} risks={risks} status={documentStatus} />
+                <ReportExport findings={activeRisks} score={score} />
+                <AuditSummary clauses={clauses} risks={activeRisks} status={documentStatus} />
               </div>
             </div>
           )}
@@ -135,11 +158,45 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
       </div>
 
       <div className="relative hidden w-[320px] flex-shrink-0 h-full border-l border-legal-border bg-legal-surface shadow-[-1px_0_10px_rgba(0,0,0,0.03)] 2xl:block">
-        <AiLegalAssistant />
+        <AiLegalAssistant clauses={clauses} risks={activeRisks} />
       </div>
     </div>
   );
 };
+
+function LegalAdviceTab({ clauses, risks }: { clauses: ClauseDTO[]; risks: RiskFindingDTO[] }) {
+  return (
+    <div className="h-full overflow-hidden p-6">
+      <div className="mx-auto grid h-full max-w-6xl gap-6 lg:grid-cols-[1fr_380px]">
+        <section className="overflow-y-auto border border-legal-border bg-white p-5 shadow-sm cl-scroll">
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-legal-meta">Grounded Advice Brain</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold text-legal-text">Legal Advice With Source References</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-legal-meta">
+            This section does not guess. It retrieves matching clauses, risk reasons, evidence quotes, and Indian-law references from the current analysis. If the answer is not supported by uploaded documents or extracted evidence, it refuses and asks for the missing source.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <AdviceStat label="Clauses grounded" value={clauses.length} />
+            <AdviceStat label="Risk evidence items" value={risks.reduce((total, risk) => total + Math.max(1, risk.evidence?.length || 0), 0)} />
+            <AdviceStat label="Open risks" value={risks.length} />
+          </div>
+          <div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <strong>Why this helps:</strong> every response must cite exact source text, so demo reviewers can see why the system said something and can catch missing-data cases instead of trusting hallucinated legal advice.
+          </div>
+        </section>
+        <AiLegalAssistant clauses={clauses} risks={risks} />
+      </div>
+    </div>
+  );
+}
+
+function AdviceStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border border-legal-border bg-legal-bg p-4">
+      <div className="font-display text-3xl font-bold text-legal-text">{value}</div>
+      <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-legal-meta">{label}</div>
+    </div>
+  );
+}
 
 function OverviewTab({ clauses, risks, cleanClauses, highRiskCount, notEvaluatedCount }: {
   clauses: ClauseDTO[];

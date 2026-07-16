@@ -1,6 +1,6 @@
 import React from 'react';
 import { ClauseDTO, RiskFindingDTO } from '../types';
-import { Target, FileX, AlertTriangle, Globe, DollarSign, Activity } from 'lucide-react';
+import { Scale, FileX, AlertTriangle, Globe, DollarSign, Activity } from 'lucide-react';
 
 interface ResultsAnalyticsPanelProps {
   clauses: ClauseDTO[];
@@ -16,8 +16,8 @@ export const ResultsAnalyticsPanel: React.FC<ResultsAnalyticsPanelProps> = ({ cl
   };
 
   const missingClauses = risks.filter(r => r.contradictionType === 'missing_clause');
-  const playbookViolations = risks.filter(r => r.contradictionType === 'playbook_violation');
-  const playbookCompliantCount = clauses.length - playbookViolations.length; 
+  const indianLawRisks = risks.filter(isIndianLawRisk);
+  const endangeredIndianLaws = getEndangeredIndianLaws(indianLawRisks);
 
   const topRisky = [...risks]
     .filter(r => r.riskLevel === 'critical' || r.riskLevel === 'high')
@@ -78,22 +78,38 @@ export const ResultsAnalyticsPanel: React.FC<ResultsAnalyticsPanelProps> = ({ cl
         </div>
       </div>
 
-      {/* Playbook Compliance */}
+      {/* Indian Law Exposure */}
       <div className="bg-legal-surface border border-legal-border rounded-sm shadow-sm p-4">
         <h3 className="font-mono text-[10px] text-legal-meta uppercase tracking-widest mb-3 border-b border-legal-border pb-1 flex items-center">
-          <Target className="w-3 h-3 mr-1.5 text-legal-focus" /> Playbook Compliance
+          <Scale className="w-3 h-3 mr-1.5 text-legal-focus" /> Indian Laws at Risk
         </h3>
-        <div className="flex items-center space-x-4">
-          <div className="text-3xl font-display font-bold text-legal-text">
-            {Math.round((playbookCompliantCount / (clauses.length || 1)) * 100)}%
+        {endangeredIndianLaws.length === 0 ? (
+          <p className="font-mono text-[10px] text-green-700">No Indian-law exposure detected.</p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="text-3xl font-display font-bold text-risk-high">{endangeredIndianLaws.length}</div>
+              <p className="font-mono text-[10px] text-legal-meta leading-tight">
+                Indian {endangeredIndianLaws.length === 1 ? 'law is' : 'laws are'} exposed by current findings.
+              </p>
+            </div>
+            <ul className="space-y-2">
+              {endangeredIndianLaws.slice(0, 4).map((law) => (
+                <li key={law.name} className="border border-risk-high/20 bg-risk-high/5 p-2 text-sm text-legal-text">
+                  <div className="flex items-start justify-between gap-2">
+                    <strong className="font-body text-risk-high">{law.name}</strong>
+                    <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-legal-meta">
+                      {law.count} {law.count === 1 ? 'risk' : 'risks'}
+                    </span>
+                  </div>
+                  {law.section && (
+                    <p className="mt-1 font-mono text-[10px] text-legal-meta">{law.section}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
-          <div>
-            <p className="font-mono text-[10px] text-legal-meta leading-tight">
-              <strong>{playbookViolations.length}</strong> rules violated.<br/>
-              {clauses.length} clauses evaluated.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Country Law Compliance */}
@@ -174,3 +190,70 @@ export const ResultsAnalyticsPanel: React.FC<ResultsAnalyticsPanelProps> = ({ cl
     </div>
   );
 };
+
+function isIndianLawRisk(risk: RiskFindingDTO): boolean {
+  const text = [
+    risk.reason,
+    risk.playbookRuleViolated || '',
+    ...(risk.evidence || []).flatMap(evidence => [evidence.documentName, evidence.section || '', evidence.quote]),
+  ].join(' ').toLowerCase();
+
+  return (
+    risk.contradictionType === 'country_law_violation' ||
+    text.includes('india') ||
+    text.includes('indian') ||
+    text.includes('act,') ||
+    text.includes('companies act') ||
+    text.includes('contract act') ||
+    text.includes('arbitration') ||
+    text.includes('dpdp') ||
+    text.includes('digital personal data protection')
+  );
+}
+
+function getEndangeredIndianLaws(risks: RiskFindingDTO[]): Array<{ name: string; section?: string; count: number }> {
+  const laws = new Map<string, { name: string; section?: string; count: number }>();
+
+  risks.forEach((risk) => {
+    const extracted = extractIndianLawReference(risk);
+    const current = laws.get(extracted.name);
+    if (current) {
+      current.count += 1;
+      current.section ||= extracted.section;
+      return;
+    }
+    laws.set(extracted.name, { ...extracted, count: 1 });
+  });
+
+  return [...laws.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+function extractIndianLawReference(risk: RiskFindingDTO): { name: string; section?: string } {
+  const source = [
+    risk.playbookRuleViolated || '',
+    risk.reason,
+    ...(risk.evidence || []).flatMap(evidence => [evidence.section || '', evidence.documentName, evidence.quote]),
+  ].join(' ');
+
+  const knownActs = [
+    'Indian Contract Act, 1872',
+    'Companies Act, 2013',
+    'Arbitration and Conciliation Act, 1996',
+    'Specific Relief Act, 1963',
+    'Limitation Act, 1963',
+    'Information Technology Act, 2000',
+    'Digital Personal Data Protection Act, 2023',
+    'DPDP Act, 2023',
+    'Commercial Courts Act, 2015',
+    'Indian Stamp Act, 1899',
+    'Sale of Goods Act, 1930',
+    'Competition Act, 2002',
+  ];
+
+  const name = knownActs.find((act) => source.toLowerCase().includes(act.toLowerCase()))
+    || source.match(/([A-Z][A-Za-z ]+ Act,\s*\d{4})/)?.[1]
+    || 'Indian statutory corpus';
+  const section = source.match(/(?:section|sec\.?|s\.)\s*[\dA-Za-z.-]+(?:\([\w\d]+\))?/i)?.[0];
+
+  return { name, section };
+}

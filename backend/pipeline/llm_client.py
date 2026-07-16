@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -57,9 +56,11 @@ def parse_json_object(text: str) -> dict[str, Any]:
 
 def _complete_groq(prompt: str, max_tokens: int | None = None) -> str:
     _load_dotenv_once()
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
-    if not api_key:
-        raise RuntimeError("Missing GROQ_API_KEY or GROK_API_KEY for LLM_PROVIDER=groq")
+    api_keys = _get_groq_api_keys()
+    if not api_keys:
+        raise RuntimeError(
+            "Missing GROQ_API_KEY/GROK_API_KEY. Optional fallback: GROQ_API_KEY_2."
+        )
 
     base_url = PIPELINE_CONFIG["groq_base_url"].rstrip("/")
     payload = {
@@ -76,7 +77,36 @@ def _complete_groq(prompt: str, max_tokens: int | None = None) -> str:
         "response_format": {"type": "json_object"} if _expects_json(prompt) else None,
     }
     payload = {key: value for key, value in payload.items() if value is not None}
-    return _post_groq(base_url, api_key, payload, allow_json_retry=True)
+    failures: list[str] = []
+    for index, api_key in enumerate(api_keys, start=1):
+        try:
+            return _post_groq(base_url, api_key, payload, allow_json_retry=True)
+        except GroqKeyExhaustedError as exc:
+            failures.append(f"key {index}: {exc}")
+            continue
+    raise RuntimeError(f"Groq API error: all configured Groq API keys failed ({'; '.join(failures)})")
+
+
+class GroqKeyExhaustedError(RuntimeError):
+    """Raised when one Groq key should be skipped in favor of the next configured key."""
+
+
+def _get_groq_api_keys() -> list[str]:
+    seen: set[str] = set()
+    keys: list[str] = []
+    for env_name in (
+        "GROQ_API_KEY",
+        "GROK_API_KEY",
+        "GROQ_API_KEY_2",
+        "GROQ_API_KEY2",
+        "GROK_API_KEY_2",
+        "GROK_API_KEY2",
+    ):
+        value = os.getenv(env_name, "").strip()
+        if value and value not in seen:
+            seen.add(value)
+            keys.append(value)
+    return keys
 
 
 def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_retry: bool) -> str:
@@ -98,14 +128,21 @@ def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_
             return body["choices"][0]["message"]["content"] or ""
     except urllib.error.HTTPError as exc:
         error_body = exc.read().decode("utf-8", errors="replace")
-        if exc.code == 429:
-            wait_seconds = float(exc.headers.get("retry-after") or 2)
-            time.sleep(wait_seconds)
-            return _post_groq(base_url, api_key, payload, allow_json_retry)
         if exc.code == 400 and allow_json_retry and "json_validate_failed" in error_body:
             retry_payload = {key: value for key, value in payload.items() if key != "response_format"}
             return _post_groq(base_url, api_key, retry_payload, allow_json_retry=False)
+        if _should_try_next_groq_key(exc.code, error_body):
+            raise GroqKeyExhaustedError(f"HTTP {exc.code}: {error_body[:200]}") from exc
         raise RuntimeError(f"Groq API error HTTP {exc.code}: {error_body[:500]}") from exc
+
+
+def _should_try_next_groq_key(status_code: int, error_body: str) -> bool:
+    lowered = error_body.lower()
+    return (
+        status_code == 429
+        or status_code in {401, 403}
+        and any(token in lowered for token in ("quota", "limit", "rate", "exhaust", "invalid", "unauthorized"))
+    )
 
 
 def _complete_claude(prompt: str, max_tokens: int | None = None) -> str:
