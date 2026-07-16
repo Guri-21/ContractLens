@@ -1,107 +1,265 @@
-<div align="center">
-  <h1>🔍 ContractLens</h1>
-  <p><strong>AI-Powered Contract Risk Analyzer & Review Platform</strong></p>
-</div>
+# ContractLens
 
-ContractLens is an intelligent contract review platform that automates the extraction, analysis, and validation of legal documents. By combining advanced LLM pipelines with deterministic parsing, ContractLens identifies risks, detects contradictions across related documents (e.g., MSA vs. SOW), flags playbook violations, and generates inline redlines—saving legal and compliance teams hours of manual review.
+AI contract review, governed by evidence.
 
-✨ Key Features
-🧠 Multi-Step AI Pipeline: A comprehensive 10-step AI workflow that performs clause extraction, classification, dependency mapping, contradiction detection, and redline generation.
-⚖️ Cross-Document Analysis: Automatically detects conflicting terms between related documents (e.g., conflicting payment timelines between a Master Services Agreement and a Statement of Work).
-🛡️ Playbook & Compliance Validation: Validates clauses against your company's custom playbook rules and specific country laws.
-👥 Role-Based Workspaces:
-Legal Reviewers: Interactive clause viewer, redline acceptance, and AI chat assistant.
-Admin & Compliance Officers: System-wide monitoring, aggregate risk dashboards, and playbook management.
-🔎 Evidence-Backed Findings: Every AI-generated risk finding includes the exact quote, page, and section from the source text. The pipeline includes a strict "refusal engine" that prevents hallucination when referenced documents are missing.
-📄 Seamless Export & Redlines: Accept AI-suggested redlines and instantly download the updated, track-changes-style .docx file, or export formal PDF audit dossiers.
-🛠️ Technology Stack
-Frontend
+ContractLens is an enterprise Contract and SOW Risk Analyzer built for the Tech Mahindra CODE Hackathon. It compares Statements of Work and other legal documents against an admin-published governing MSA, detects legal and commercial risk, preserves source evidence, produces redline suggestions, and refuses to evaluate missing referenced documents instead of guessing.
 
-React + Vite + TypeScript
-TailwindCSS + shadcn/ui
-React-PDF (PDF highlighting) & Recharts (Analytics dashboards)
-Docx & File-Saver (Client-side redlined document generation)
-Backend & Data Platform
+## Production Branch
 
-Python 3.10+ & FastAPI
-Prisma ORM + Neon Serverless Postgres
-JWT Authentication & RBAC
-AI & Pipeline
+The latest working prototype is on the `production` branch.
 
-LLM Providers: Claude API / Groq
-Document Parsing: pdfplumber, PyMuPDF, python-docx
-Architecture: Independent, strict JSON-contract agent steps instead of a monolithic black-box.
-🚀 Getting Started
-Prerequisites
-Node.js (v18+)
-Python 3.10+
-A PostgreSQL database (e.g., Neon Serverless Postgres)
-API Keys for your chosen LLM provider (Groq / Claude)
-Backend Setup
-Environment Variables:
+Use this branch for demos, final integration, and teammate merges:
 
-bash
+```powershell
+git checkout production
+git pull origin production
+```
 
-cd backend
-cp .env.example .env
-Edit .env to include your DATABASE_URL and LLM_PROVIDER credentials.
+## Demo Video
 
-Install Dependencies & Database Setup:
+Project walkthrough video:
 
-bash
+```text
+https://drive.google.com/file/d/1m1piL5Cg4cOORZp4VHtDhDsjTE665NuZ/view?usp=sharing
+```
 
-python -m venv venv
-# On Mac / Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
+## What Works
+
+- Seeded login with one Admin and five Legal Advisors stored in the connected database.
+- Admin portal for MSA upload, advisor assignment, advisor monitoring, analytics, audit logs, and settings.
+- Legal Advisor workspace for selecting assigned MSAs, uploading SOW or other contract documents, running analysis, and reviewing saved analyses.
+- Saved analyses persist in PostgreSQL and are scoped by advisor, so one advisor cannot see another advisor's work.
+- Contract pipeline parses documents, segments clauses, classifies clauses, extracts references and overrides, detects contradictions, handles missing-document refusal, assigns risk, generates redlines, and produces summaries.
+- Indian-law grounding via extracted statutory references and ChromaDB ingestion support.
+- Dependency graph renders extracted clause relationships, references, overrides, conflicts, and risk status.
+- Legal advice panel answers from the current analysis with source-grounded references.
+- Admin analytics are calculated from saved analysis data, not static frontend placeholders.
+
+## Tech Stack
+
+- Frontend: React, Vite, TypeScript, TailwindCSS, React Flow, Recharts, React PDF.
+- Backend: FastAPI, Prisma Python, PostgreSQL, PyJWT.
+- AI pipeline: Groq/Grok-compatible LLM routing, Claude-compatible modules, Hugging Face classifier benchmarks, deterministic fallback logic.
+- Retrieval: ChromaDB for embedded legal/statutory chunks.
+- Graph logic: JSON clause references plus frontend graph rendering.
+
+## Repository Structure
+
+```text
+ContractLens/
+  backend/
+    app/
+      api/                 FastAPI route modules
+      core/                auth/security helpers
+      database.py          Prisma connection
+    pipeline/              10-step legal analysis pipeline
+    prisma/schema.prisma   PostgreSQL schema
+    scripts/               seed, benchmark, OpenAPI, law ingestion scripts
+    requirements.txt
+  frontend/
+    src/                   React app, admin portal, advisor workspace
+    package.json
+  shared/mock-data/        DTO-shaped mock clauses and findings
+  Dataset/                 Local legal datasets and law PDFs
+  docs/                    Project notes and implementation docs
+  openapi.json             API contract snapshot
+```
+
+## Demo Accounts
+
+The backend ensures these accounts exist on startup.
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@contractlens.com` | `12345` |
+| Legal Advisor 1 | `advisor1@contractlens.com` | `1` |
+| Legal Advisor 2 | `advisor2@contractlens.com` | `2` |
+| Legal Advisor 3 | `advisor3@contractlens.com` | `3` |
+| Legal Advisor 4 | `advisor4@contractlens.com` | `4` |
+| Legal Advisor 5 | `advisor5@contractlens.com` | `5` |
+
+## Environment
+
+Create `backend/.env` from `backend/.env.example` and fill real values:
+
+```env
+DATABASE_URL="postgresql://..."
+
+GROQ_API_KEY=
+GROQ_API_KEY_2=
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+LLM_PROVIDER=groq
+GROQ_MODEL=llama-3.3-70b-versatile
+
+ANTHROPIC_API_KEY=
+AGENT_ROUTER_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+Do not commit `.env` or API keys.
+
+## Run Locally
+
+Backend:
+
+```powershell
+cd "C:\Users\vinay\OneDrive\Desktop\All my projects\TechM\ContractLens\backend"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-prisma db push
 prisma generate
-Run the Backend Server:
+prisma db push
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
-bash
+Frontend:
 
-uvicorn main:app --reload
-The API will be available at http://127.0.0.1:8000. You can view the Swagger UI at http://127.0.0.1:8000/docs.
-
-Frontend Setup
-Install Dependencies:
-
-bash
-
-cd frontend
+```powershell
+cd "C:\Users\vinay\OneDrive\Desktop\All my projects\TechM\ContractLens\frontend"
 npm install
-Run the Development Server:
-
-bash
-
 npm run dev
-The application will be available at http://localhost:5173.
+```
 
-🏗️ Architecture & Pipeline Flow
-The ContractLens intelligence engine operates on a strict JSON-contract basis, where each step is independently verifiable:
+Open:
 
-Parsing & Extraction: Deterministic text and metadata extraction from PDF/DOCX.
-Segmentation: Regex and LLM-assisted splitting of text into distinct clauses.
-Classification: Tagging clauses (e.g., Liability, Payment, Termination).
-Dependency Mapping: Identifying clauses that reference or override one another.
-Contradiction Detection: Cross-referencing multiple documents to find logical conflicts.
-Playbook & Law Validation: Checking against internal rules and jurisdictional law.
-Risk Scoring: Assigning severity (Low, Medium, High, Critical) based on findings.
-Redlining: Proposing specific word-level rewrites (originalText vs suggestedText) to mitigate risks.
-👥 Demo Roles
-To test the application, you can log in using the following seed accounts (password for all is password123):
+```text
+http://localhost:5173
+```
 
-admin@contractlens.com (Admin / Config)
-reviewer@contractlens.com (Legal Reviewer Workspace)
-compliance@contractlens.com (Analytics Dashboard)
+If Vite chooses another port, `http://localhost:5174` is also allowed by backend CORS.
 
-📸Video Demo of the Project
+## Demo Flow
 
-Built by Team 6:
-- Gurnoor Partap Singh Bhogal
-- Himani Agarwal
-- Vinayak Koli
-- Vishal Kumar
-- Vriti Goyal
+1. Sign in as Admin.
+2. Upload or confirm a governing MSA in the MSA repository.
+3. Assign that MSA to a Legal Advisor.
+4. Sign out and sign in as that advisor.
+5. Select the assigned MSA.
+6. Upload a SOW, NDA, or other contract document.
+7. Run analysis.
+8. Review Overview, Clauses, Risks, Dependency Graph, Redlines, Legal Advice, and Audit Export.
+
+For Advisor 1 testing, use the assigned `AcmeCorp_Governing_MSA.pdf` and a matching AcmeCorp SOW test document if present in the local demo files.
+
+## Pipeline
+
+The pipeline lives in `backend/pipeline/`.
+
+| Step | File | Purpose |
+| --- | --- | --- |
+| 1 | `step01_parse.py` | Extract text, pages, and tables from PDF/DOCX/TXT inputs. |
+| 2 | `step02_segment.py` | Split contracts into legal clauses and section-level units. |
+| 3 | `step03_classify.py` | Classify clause types such as payment, liability, SLA, confidentiality, termination, and governing law. |
+| 4 | `step04_references.py` | Extract references, overrides, and dependency phrases like "notwithstanding" or "subject to". |
+| 5 | `step05_contradict.py` | Detect MSA vs SOW contradictions and inconsistent terms. |
+| 6 | `step06_refusal.py` | Deterministically marks missing exhibits/documents as `not_evaluated`. |
+| 7 | `step07_playbook.py` | Checks clauses against active legal/compliance expectations. |
+| 8 | `step08_risk.py` | Computes risk level and risk score from findings. |
+| 9 | `step09_redline.py` | Generates suggested fallback language and redline text. |
+| 10 | `step10_report.py` | Builds the executive summary and report data. |
+
+The main entrypoint is:
+
+```python
+backend/pipeline/run_pipeline.py
+```
+
+## Important API Surfaces
+
+| Area | Endpoint |
+| --- | --- |
+| Auth | `POST /api/auth/token` |
+| Seeded users | `GET /api/auth/available-users` |
+| Documents | `GET /api/documents/`, `POST /api/documents/upload`, `POST /api/documents/admin-upload` |
+| MSA assignment | `POST /api/documents/{document_id}/assign` |
+| Analysis | `POST /api/analyze`, `GET /api/analyze`, `POST /api/analyze/run` |
+| Admin analytics | `GET /api/admin/analytics`, `GET /api/admin/advisors/{advisor_id}/analytics` |
+| Audit | `GET /api/audit/` |
+| Settings | `GET /api/settings/`, `PUT /api/settings/` |
+
+## Data Model
+
+Core tables are defined in `backend/prisma/schema.prisma`:
+
+- `User`, `Role`
+- `Document`
+- `Clause`
+- `RiskFinding`
+- `AuditLog`
+- `ClauseVersion`
+- `CountryLawCompliance`
+- `FinancialSummary`
+- `Approval`
+- `Notification`
+
+The most important analysis shapes are:
+
+- Clause: original text, section, page, type, references, overrides, table data, embedding id.
+- Risk finding: risk level, status, reason, evidence quotes, missing documents, redline, contradiction metadata, confidence.
+
+## Indian Law Grounding
+
+Indian law PDFs live under `Dataset/`. The ingestion script is:
+
+```powershell
+cd backend
+python scripts/ingest_indian_laws.py
+```
+
+The intended ChromaDB metadata shape is:
+
+```text
+act_name
+section_number
+section_title
+source_pdf
+page_number
+jurisdiction = India
+law_type = statute
+```
+
+This lets the product show which Indian laws are exposed or breached and cite the source rather than hallucinating legal advice.
+
+## Benchmarks
+
+Benchmark scripts are under `backend/scripts/benchmark/`.
+
+Useful commands:
+
+```powershell
+cd backend
+python scripts/benchmark/run_groq_benchmark.py
+python scripts/benchmark/run_refusal_benchmark.py
+python scripts/benchmark/run_classifier_benchmark.py
+```
+
+Benchmark outputs are written beside the scripts as JSON/log files.
+
+## Verification
+
+Before pushing production changes, run:
+
+```powershell
+cd backend
+python -m compileall main.py app pipeline
+
+cd ..\frontend
+npm run build
+```
+
+Optional frontend tests:
+
+```powershell
+npm test -- --run
+```
+
+## Team Workflow
+
+- `production` is the current integration branch and demo branch.
+- Feature branches should merge into `production`, not directly into `main`.
+- Keep `.env`, local server logs, `.codegraph/`, generated caches, and local uploads out of commits.
+- If frontend and backend behavior disagree, treat backend persisted analysis data as the source of truth and fix the derived UI calculation.
+
+## Demo Principle
+
+ContractLens should never say "probably" when legal source data is missing. Every risk must show evidence, and missing exhibits or governing documents must produce a refusal state instead of an invented answer.
