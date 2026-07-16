@@ -14,16 +14,16 @@ const statusLabels = {
 } as const;
 
 const statusClasses = {
-  safe: 'border-emerald-300 bg-emerald-50 text-emerald-950',
-  risk: 'border-red-300 bg-red-50 text-red-950',
-  not_evaluated: 'border-amber-300 bg-amber-50 text-amber-950',
+  safe: 'border-redline-add bg-redline-addBg text-legal-text',
+  risk: 'border-risk-high bg-redline-removeBg text-legal-text',
+  not_evaluated: 'border-accent bg-white text-legal-text',
 } as const;
 
 const riskClasses = {
-  low: 'border-sky-400',
-  medium: 'border-orange-400',
-  high: 'border-red-500',
-  critical: 'border-red-700',
+  low: 'border-risk-low',
+  medium: 'border-risk-medium',
+  high: 'border-risk-high',
+  critical: 'border-risk-critical',
 } as const;
 
 export function ClauseNode({ data, selected }: ClauseNodeProps) {
@@ -33,8 +33,8 @@ export function ClauseNode({ data, selected }: ClauseNodeProps) {
   const stateClasses = [
     statusClasses[status],
     highestRisk && status === 'risk' ? riskClasses[highestRisk] : '',
-    hasOverride ? 'border-l-4 border-l-amber-500' : '',
-    inCycle ? 'ring-1 ring-violet-500 ring-offset-1' : '',
+    hasOverride ? 'border-l-4 border-l-accent' : '',
+    inCycle ? 'ring-1 ring-legal-focus ring-offset-1' : '',
     selected ? 'outline outline-2 outline-legal-focus outline-offset-2' : '',
     data.dimmed ? 'opacity-35' : '',
   ].filter(Boolean).join(' ');

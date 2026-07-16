@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
-  MarkerType,
-  type Edge,
-  type Node,
   type NodeMouseHandler,
   type NodeTypes,
 } from 'reactflow';
@@ -15,34 +12,21 @@ import type { ClauseDTO, RiskFindingDTO } from '../reviewer-workspace/types';
 import { ClauseNode } from './dependency-graph/ClauseNode';
 import { EvidenceInspector } from './dependency-graph/EvidenceInspector';
 import { GraphLegend } from './dependency-graph/GraphLegend';
+import { UnresolvedEndpoint } from './dependency-graph/UnresolvedEndpoint';
 import {
   buildGraphModel,
   getFocusedElementIds,
   type ClauseNodeData,
   type GraphEdge,
 } from './dependency-graph/graphModel';
+import { buildPresentationGraph, getUnresolvedTargets } from './dependency-graph/graphPresentation';
 
 interface DependencyGraphProps {
   clauses: ClauseDTO[];
   risks: RiskFindingDTO[];
 }
 
-type PresentationNodeData = ClauseNodeData & { dimmed: boolean };
-
-const nodeTypes: NodeTypes = { clause: ClauseNode };
-
-type EdgeAppearance = {
-  label: string;
-  color: string;
-  dash?: string;
-};
-
-const edgeAppearance: Record<GraphEdge['data']['relationship'], EdgeAppearance> = {
-  reference: { label: 'REF', color: '#64748B', dash: '5 5' },
-  override: { label: 'OVERRIDES', color: '#B45309' },
-  conflict: { label: 'CONFLICT', color: '#DC2626' },
-  unresolved: { label: 'UNRESOLVED', color: '#B45309', dash: '3 3' },
-} as const;
+const nodeTypes: NodeTypes = { clause: ClauseNode, unresolved: UnresolvedEndpoint };
 
 export function DependencyGraph({ clauses, risks }: DependencyGraphProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -53,22 +37,18 @@ export function DependencyGraph({ clauses, risks }: DependencyGraphProps) {
     [graphModel, selectedNodeId],
   );
 
-  const nodes = useMemo<Node<PresentationNodeData>[]>(() => graphModel.nodes.map((node) => ({
-    id: node.id,
-    type: 'clause',
-    position: node.position,
-    data: { ...node.data, dimmed: Boolean(focusedElementIds && !focusedElementIds.has(node.id)) },
-    style: { width: node.width, height: node.height },
-  })), [focusedElementIds, graphModel.nodes]);
-
-  const edges = useMemo<Edge[]>(() => graphModel.edges.map((edge) => toFlowEdge(edge, graphModel, focusedElementIds, prefersReducedMotion)), [focusedElementIds, graphModel, prefersReducedMotion]);
+  const presentation = useMemo(
+    () => buildPresentationGraph(graphModel, focusedElementIds, prefersReducedMotion),
+    [focusedElementIds, graphModel, prefersReducedMotion],
+  );
   const selectedNode = graphModel.nodes.find((node) => node.id === selectedNodeId);
   const linkedClauses = useMemo(() => getLinkedClauses(graphModel.edges, graphModel.nodes, selectedNodeId), [graphModel.edges, graphModel.nodes, selectedNodeId]);
+  const unresolvedTargets = useMemo(() => getUnresolvedTargets(graphModel, selectedNodeId), [graphModel, selectedNodeId]);
 
   const handleNodeClick: NodeMouseHandler = (_, node) => setSelectedNodeId(node.id);
 
   return (
-    <div className="relative flex h-full min-h-[460px] w-full overflow-hidden bg-slate-50">
+    <div className="relative flex h-full min-h-[460px] w-full overflow-hidden bg-legal-bg">
       <GraphLegend />
       {graphModel.cycleNodeIds.length > 0 && (
         <div className="absolute left-4 top-28 z-10 flex items-center border border-risk-critical/20 bg-risk-critical/10 px-4 py-2 text-risk-critical shadow-md">
@@ -78,8 +58,8 @@ export function DependencyGraph({ clauses, risks }: DependencyGraphProps) {
       )}
 
       <div className="relative min-w-0 flex-1">
-        <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.24 }} onNodeClick={handleNodeClick}>
-          <Background color="#dbe3ef" gap={24} />
+        <ReactFlow nodes={presentation.nodes} edges={presentation.edges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.24 }} onNodeClick={handleNodeClick}>
+          <Background gap={24} />
           <Controls className="rounded-sm border border-legal-border bg-white font-mono shadow-sm" />
         </ReactFlow>
       </div>
@@ -89,38 +69,13 @@ export function DependencyGraph({ clauses, risks }: DependencyGraphProps) {
           clause={selectedNode.data.clause}
           risks={selectedNode.data.risks}
           linkedClauses={linkedClauses}
+          unresolvedTargets={unresolvedTargets}
           onClose={() => setSelectedNodeId(null)}
           onSelectClause={setSelectedNodeId}
         />
       )}
     </div>
   );
-}
-
-function toFlowEdge(
-  edge: GraphEdge,
-  graphModel: ReturnType<typeof buildGraphModel>,
-  focusedElementIds: Set<string> | undefined,
-  prefersReducedMotion: boolean,
-): Edge {
-  const appearance = edgeAppearance[edge.data.relationship];
-  const sourceNode = graphModel.nodes.find((node) => node.id === edge.source);
-  const targetNode = graphModel.nodes.find((node) => node.id === edge.target);
-  const sameDocument = sourceNode?.data.clause.documentId === targetNode?.data.clause.documentId;
-  const dimmed = Boolean(focusedElementIds && !focusedElementIds.has(edge.id));
-
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    type: sameDocument ? 'smoothstep' : 'default',
-    label: appearance.label,
-    animated: edge.data.relationship === 'conflict' && !prefersReducedMotion,
-    labelStyle: { fontFamily: 'IBM Plex Mono', fontSize: 10, fontWeight: 700, fill: appearance.color },
-    labelBgStyle: { fill: '#F8FAFC' },
-    style: { stroke: appearance.color, strokeWidth: edge.data.relationship === 'reference' ? 1.5 : 2, strokeDasharray: appearance.dash, opacity: dimmed ? 0.2 : 1 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: appearance.color },
-  };
 }
 
 function getLinkedClauses(

@@ -6,11 +6,12 @@ type EvidenceInspectorProps = {
   clause: ClauseDTO;
   risks: readonly RiskFindingDTO[];
   linkedClauses: readonly ClauseDTO[];
+  unresolvedTargets: readonly string[];
   onClose: () => void;
   onSelectClause: (clauseId: string) => void;
 };
 
-export function EvidenceInspector({ clause, risks, linkedClauses, onClose, onSelectClause }: EvidenceInspectorProps) {
+export function EvidenceInspector({ clause, risks, linkedClauses, unresolvedTargets, onClose, onSelectClause }: EvidenceInspectorProps) {
   return (
     <aside aria-label="Evidence inspector" className="fixed inset-x-0 bottom-0 z-20 max-h-[72vh] overflow-y-auto border-t border-legal-border bg-legal-surface shadow-[0_-4px_15px_rgba(0,0,0,0.08)] md:static md:h-full md:max-h-none md:w-80 md:border-l md:border-t-0 md:shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
       <header className="sticky top-0 flex items-center justify-between border-b border-legal-border bg-legal-bg p-4">
@@ -33,7 +34,7 @@ export function EvidenceInspector({ clause, risks, linkedClauses, onClose, onSel
         <section>
           <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-legal-meta">Risks</h3>
           {risks.length === 0 ? (
-            <div className="mt-2 flex items-center gap-2 border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            <div className="mt-2 flex items-center gap-2 border border-redline-add bg-redline-addBg p-3 text-sm text-legal-text">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               No risks detected for this clause.
             </div>
@@ -57,6 +58,15 @@ export function EvidenceInspector({ clause, risks, linkedClauses, onClose, onSel
             </div>
           </section>
         )}
+
+        {unresolvedTargets.length > 0 && (
+          <section>
+            <h3 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-legal-meta">Missing relationship targets</h3>
+            <ul className="mt-2 space-y-2 border border-accent bg-white p-2 text-xs text-legal-text">
+              {unresolvedTargets.map((targetId) => <li key={targetId}>Missing target: {targetId}</li>)}
+            </ul>
+          </section>
+        )}
       </div>
     </aside>
   );
@@ -78,7 +88,7 @@ function RiskEvidence({ risk }: { risk: RiskFindingDTO }) {
         </blockquote>
       ))}
       {(risk.missingDocuments?.length ?? 0) > 0 && (
-        <div className="mt-3 border border-amber-300 bg-amber-50 p-2 text-amber-950">
+        <div className="mt-3 border border-accent bg-white p-2 text-legal-text">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-widest">Missing documents</p>
           <ul className="mt-1 list-disc pl-4">
             {risk.missingDocuments?.map((documentName) => <li key={documentName}>{documentName}</li>)}

@@ -1,14 +1,14 @@
 const statusItems = [
-  { label: 'No risk', className: 'border-emerald-300 bg-emerald-100' },
-  { label: 'Risk', className: 'border-red-300 bg-red-100' },
-  { label: 'Not evaluated', className: 'border-amber-300 bg-amber-100' },
+  { label: 'No risk', className: 'border-redline-add bg-redline-addBg' },
+  { label: 'Risk', className: 'border-risk-high bg-redline-removeBg' },
+  { label: 'Not evaluated', className: 'border-accent bg-white' },
 ];
 
 const relationshipItems = [
-  { label: 'REF', className: 'border-slate-400 bg-slate-100' },
-  { label: 'OVERRIDES', className: 'border-amber-500 bg-amber-100' },
-  { label: 'CONFLICT', className: 'border-red-500 bg-red-100' },
-  { label: 'CIRCULAR', className: 'border-violet-500 bg-violet-100' },
+  { label: 'REF', className: 'border-legal-meta bg-white' },
+  { label: 'OVERRIDES', className: 'border-accent bg-white' },
+  { label: 'CONFLICT', className: 'border-risk-critical bg-redline-removeBg' },
+  { label: 'CIRCULAR', className: 'border-legal-focus bg-white' },
 ];
 
 export function GraphLegend() {

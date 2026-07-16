@@ -6,6 +6,8 @@ import type { ClauseDTO, RiskFindingDTO } from '../../reviewer-workspace/types';
 import { ClauseNode } from './ClauseNode';
 import { EvidenceInspector } from './EvidenceInspector';
 import { GraphLegend } from './GraphLegend';
+import { buildPresentationGraph } from './graphPresentation';
+import { buildGraphModel } from './graphModel';
 
 const clause: ClauseDTO = {
   id: 'sow-payment',
@@ -84,6 +86,7 @@ describe('dependency graph presentation', () => {
           clause={clause}
           risks={[risk]}
           linkedClauses={[{ ...clause, id: 'msa-payment', documentName: 'Master Services Agreement' }]}
+          unresolvedTargets={[]}
           onClose={() => undefined}
           onSelectClause={() => undefined}
         />
@@ -94,9 +97,9 @@ describe('dependency graph presentation', () => {
     expect(markup).toContain('Risk');
     expect(markup).toContain('No risk');
     expect(markup).toContain('Not evaluated');
-    expect(markup).toContain('border-red-500');
-    expect(markup).toContain('border-l-amber-500');
-    expect(markup).toContain('ring-violet-500');
+    expect(markup).toContain('border-risk-high');
+    expect(markup).toContain('border-l-accent');
+    expect(markup).toContain('ring-legal-focus');
     expect(markup).toContain('SOW 4.2');
     expect(markup).toContain('Implementation Statement of Work');
     expect(markup).toContain('Payment is due within thirty days of invoice receipt.');
@@ -105,5 +108,52 @@ describe('dependency graph presentation', () => {
     expect(markup).toContain('OVERRIDES');
     expect(markup).toContain('CONFLICT');
     expect(markup).toContain('CIRCULAR');
+    expect(markup).toContain('border-redline-add');
+    expect(markup).toContain('border-accent');
+    expect(markup).not.toContain('border-emerald-');
+    expect(markup).not.toContain('border-amber-');
+    expect(markup).not.toContain('border-violet-');
+  });
+
+  it('renders missing relationship targets as labeled endpoint stubs with semantic edges', () => {
+    const missingTarget = 'missing-security-exhibit';
+    const sourceClause: ClauseDTO = {
+      ...clause,
+      id: 'sow-security',
+      references: ['msa-payment', missingTarget],
+      overrides: [],
+    };
+    const referencedClause: ClauseDTO = {
+      ...clause,
+      id: 'msa-payment',
+      documentId: 'msa-1',
+      documentName: 'Master Services Agreement',
+      documentType: 'MSA',
+      references: [],
+      overrides: [],
+    };
+    const model = buildGraphModel([sourceClause, referencedClause], [{ ...risk, clauseId: sourceClause.id }]);
+    const presentation = buildPresentationGraph(model, undefined, true);
+    const unresolvedEdge = presentation.edges.find((edge) => edge.label === 'UNRESOLVED');
+    const conflictEdge = presentation.edges.find((edge) => edge.label === 'CONFLICT');
+
+    expect(presentation.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `unresolved--${missingTarget}`,
+        type: 'unresolved',
+        data: expect.objectContaining({ label: `Missing target: ${missingTarget}` }),
+      }),
+    ]));
+    expect(unresolvedEdge).toMatchObject({
+      source: sourceClause.id,
+      target: `unresolved--${missingTarget}`,
+      className: 'text-accent',
+      type: 'default',
+      animated: false,
+    });
+    expect(conflictEdge).toMatchObject({
+      className: 'text-risk-critical',
+      animated: false,
+    });
   });
 });
