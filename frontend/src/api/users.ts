@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './client';
 import { cachedRequest, invalidateAdminDataCache } from './cache';
+import { invalidateAvailableUsersCache } from './auth';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -36,6 +37,7 @@ export const createUser = async (data: { email: string; role_id?: string; passwo
   });
   if (!res.ok) throw new Error('Failed to create user');
   invalidateAdminDataCache();
+  invalidateAvailableUsersCache();
   return res.json();
 };
 
@@ -49,5 +51,6 @@ export const deleteUser = async (id: string) => {
     throw new Error(data.detail || 'Failed to delete user');
   }
   invalidateAdminDataCache();
+  invalidateAvailableUsersCache();
   return res.json();
 };

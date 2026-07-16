@@ -38,14 +38,20 @@ def demo_display_name(email: str, role: str) -> str:
     return email.split("@", 1)[0].replace(".", " ").replace("_", " ").title()
 
 
-async def ensure_seeded_access_users(db: Prisma) -> None:
+async def ensure_seeded_access_users(db: Prisma, repair_passwords: bool = True) -> None:
     """Keep the hackathon access accounts available after DB resets/env switches."""
     admin_role = await ensure_role(db, "Admin")
     advisor_role = await ensure_role(db, SEEDED_ADVISOR_ROLE)
 
-    await upsert_seeded_user(db, DEMO_ADMIN_EMAIL, DEMO_USER_PASSWORDS[DEMO_ADMIN_EMAIL], admin_role.id)
+    await upsert_seeded_user(
+        db,
+        DEMO_ADMIN_EMAIL,
+        DEMO_USER_PASSWORDS[DEMO_ADMIN_EMAIL],
+        admin_role.id,
+        repair_passwords,
+    )
     for email in DEMO_ADVISOR_EMAILS:
-        await upsert_seeded_user(db, email, DEMO_USER_PASSWORDS[email], advisor_role.id)
+        await upsert_seeded_user(db, email, DEMO_USER_PASSWORDS[email], advisor_role.id, repair_passwords)
 
 
 async def ensure_role(db: Prisma, role_name: str):
@@ -55,19 +61,19 @@ async def ensure_role(db: Prisma, role_name: str):
     return await db.role.create(data={"name": role_name})
 
 
-async def upsert_seeded_user(db: Prisma, email: str, password: str, role_id: str) -> None:
+async def upsert_seeded_user(
+    db: Prisma,
+    email: str,
+    password: str,
+    role_id: str,
+    repair_passwords: bool = True,
+) -> None:
     user = await db.user.find_unique(where={"email": email})
-    user_needs_password = True
     if user:
-        try:
-            user_needs_password = not verify_password(password, user.hashed_password)
-        except (TypeError, ValueError):
-            user_needs_password = True
-
         update_data = {}
         if user.role_id != role_id:
             update_data["role_id"] = role_id
-        if user_needs_password:
+        if repair_passwords and not seeded_password_matches(password, user.hashed_password):
             update_data["hashed_password"] = get_password_hash(password)
         if update_data:
             await db.user.update(where={"email": email}, data=update_data)
@@ -81,12 +87,34 @@ async def upsert_seeded_user(db: Prisma, email: str, password: str, role_id: str
         }
     )
 
+
+def seeded_password_matches(password: str, hashed_password: str) -> bool:
+    try:
+        return verify_password(password, hashed_password)
+    except (TypeError, ValueError):
+        return False
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = Depends(get_db)):
     if form_data.username in DEMO_USER_PASSWORDS:
-        await ensure_seeded_access_users(db)
+        await ensure_seeded_access_users(db, repair_passwords=False)
 
     user = await db.user.find_unique(where={"email": form_data.username}, include={"role": True})
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        expected_seeded_password = DEMO_USER_PASSWORDS.get(form_data.username)
+        if user and expected_seeded_password and form_data.password == expected_seeded_password:
+            await db.user.update(
+                where={"email": user.email},
+                data={"hashed_password": get_password_hash(expected_seeded_password)},
+            )
+            user = await db.user.find_unique(where={"email": form_data.username}, include={"role": True})
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,26 +141,36 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/available-users")
 @router.get("/demo-users", include_in_schema=False)
 async def list_demo_users(db: Prisma = Depends(get_db)):
-    await ensure_seeded_access_users(db)
-
     users = await db.user.find_many(
         where={
-            "AND": [
-                {"email": {"in": DEMO_USER_EMAILS}},
-                {
-                    "role": {
-                        "is": {
-                            "name": {
-                            "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
-                            }
-                        }
+            "role": {
+                "is": {
+                    "name": {
+                        "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
                     }
-                },
-            ]
+                }
+            }
         },
         include={"role": True},
         order={"email": "asc"},
     )
+
+    existing_seeded_emails = {user.email for user in users if user.email in DEMO_USER_EMAILS}
+    if existing_seeded_emails != set(DEMO_USER_EMAILS):
+        await ensure_seeded_access_users(db, repair_passwords=False)
+        users = await db.user.find_many(
+            where={
+                "role": {
+                    "is": {
+                        "name": {
+                            "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
+                        }
+                    }
+                }
+            },
+            include={"role": True},
+            order={"email": "asc"},
+        )
 
     serialized = [
         {

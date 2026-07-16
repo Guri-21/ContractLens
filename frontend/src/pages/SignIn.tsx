@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Database, FileText, LockKeyhole, Scale, Shield, UserRound } from 'lucide-react';
-import { AvailableUser, fetchAvailableUsers } from '../api/auth';
+import {
+  AvailableUser,
+  type AvailableUsersByRole,
+  fetchAvailableUsers,
+  getCachedAvailableUsers,
+} from '../api/auth';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../lib/context/AuthContext';
 
@@ -28,27 +33,40 @@ const ROLE_COPY = {
 };
 
 export default function SignIn() {
+  const cachedUsers = useMemo(() => getCachedAvailableUsers(), []);
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState<LoginRole | null>(null);
   const [selectedUser, setSelectedUser] = useState<AvailableUser | null>(null);
   const [password, setPassword] = useState('');
-  const [availableUsersByRole, setAvailableUsersByRole] = useState<{ admins: AvailableUser[]; advisors: AvailableUser[] }>({ admins: [], advisors: [] });
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [availableUsersByRole, setAvailableUsersByRole] = useState<AvailableUsersByRole>(
+    cachedUsers || { admins: [], advisors: [] },
+  );
+  const [isLoadingUsers, setIsLoadingUsers] = useState(!cachedUsers);
+  const [isRefreshingUsers, setIsRefreshingUsers] = useState(Boolean(cachedUsers));
   const { login, isLoading } = useAuth();
 
   useEffect(() => {
     let active = true;
 
     async function loadAvailableUsers() {
+      if (cachedUsers) {
+        setIsRefreshingUsers(true);
+      }
       try {
         const users = await fetchAvailableUsers();
         if (!active) return;
         setAvailableUsersByRole(users);
+        setError('');
       } catch (err: any) {
         if (!active) return;
-        setError(err.message || 'Failed to load available users');
+        if (!cachedUsers) {
+          setError(err.message || 'Failed to load available users');
+        }
       } finally {
-        if (active) setIsLoadingUsers(false);
+        if (active) {
+          setIsLoadingUsers(false);
+          setIsRefreshingUsers(false);
+        }
       }
     }
 
@@ -56,7 +74,7 @@ export default function SignIn() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [cachedUsers]);
 
   const availableUsers = useMemo(() => {
     if (selectedRole === 'admin') return availableUsersByRole.admins;
@@ -130,6 +148,11 @@ export default function SignIn() {
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-light">
                 Access is scoped by role. Admin sees platform controls; advisors see only their assigned MSA/SOW analyses.
               </p>
+              {isRefreshingUsers && (
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-light">
+                  Syncing latest users...
+                </p>
+              )}
             </div>
 
             {error && (

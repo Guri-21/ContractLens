@@ -7,6 +7,29 @@ export interface AvailableUser {
   displayName: string;
 }
 
+export type AvailableUsersByRole = { admins: AvailableUser[]; advisors: AvailableUser[] };
+
+const AVAILABLE_USERS_CACHE_KEY = 'contractlens.availableUsers.v1';
+const SEEDED_AVAILABLE_USERS: AvailableUsersByRole = {
+  admins: [
+    {
+      id: 'seeded-admin',
+      email: 'admin@contractlens.com',
+      role: 'Admin',
+      displayName: 'Admin',
+    },
+  ],
+  advisors: Array.from({ length: 5 }, (_, index) => {
+    const advisorNumber = index + 1;
+    return {
+      id: `seeded-advisor-${advisorNumber}`,
+      email: `advisor${advisorNumber}@contractlens.com`,
+      role: 'Legal Reviewer',
+      displayName: `Legal Advisor ${advisorNumber}`,
+    };
+  }),
+};
+
 export const login = async (username: string, password: string) => {
   const params = new URLSearchParams();
   params.append('username', username);
@@ -27,11 +50,38 @@ export const login = async (username: string, password: string) => {
   return res.json();
 };
 
-export const fetchAvailableUsers = async (): Promise<{ admins: AvailableUser[]; advisors: AvailableUser[] }> => {
+export const fetchAvailableUsers = async (): Promise<AvailableUsersByRole> => {
   const res = await fetch(`${API_BASE_URL}/api/auth/available-users`);
 
   if (!res.ok) {
     throw new Error('Failed to load available users');
   }
-  return res.json();
+  const users = await res.json();
+  setCachedAvailableUsers(users);
+  return users;
+};
+
+export function getCachedAvailableUsers(): AvailableUsersByRole | null {
+  try {
+    const raw = localStorage.getItem(AVAILABLE_USERS_CACHE_KEY);
+    return raw ? JSON.parse(raw) as AvailableUsersByRole : SEEDED_AVAILABLE_USERS;
+  } catch {
+    return SEEDED_AVAILABLE_USERS;
+  }
+}
+
+export function setCachedAvailableUsers(users: AvailableUsersByRole) {
+  try {
+    localStorage.setItem(AVAILABLE_USERS_CACHE_KEY, JSON.stringify(users));
+  } catch {
+    // Local storage can fail in private mode; the network result still works.
+  }
+}
+
+export function invalidateAvailableUsersCache() {
+  try {
+    localStorage.removeItem(AVAILABLE_USERS_CACHE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
 };
