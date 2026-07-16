@@ -1,5 +1,7 @@
-🔍 ContractLens
-AI-Powered Contract Risk Analyzer & Review Platform
+<div align="center">
+  <h1>🔍 ContractLens</h1>
+  <p><strong>AI-Powered Contract Risk Analyzer & Review Platform</strong></p>
+</div>
 
 ContractLens is an intelligent contract review platform that automates the extraction, analysis, and validation of legal documents. By combining advanced LLM pipelines with deterministic parsing, ContractLens identifies risks, detects contradictions across related documents (e.g., MSA vs. SOW), flags playbook violations, and generates inline redlines—saving legal and compliance teams hours of manual review.
 
