@@ -4,17 +4,6 @@ AI contract review, governed by evidence.
 
 ContractLens is an enterprise Contract and SOW Risk Analyzer built for the Tech Mahindra CODE Hackathon. It compares Statements of Work and other legal documents against an admin-published governing MSA, detects legal and commercial risk, preserves source evidence, produces redline suggestions, and refuses to evaluate missing referenced documents instead of guessing.
 
-## Production Branch
-
-The latest working prototype is on the `production` branch.
-
-Use this branch for demos, final integration, and teammate merges:
-
-```powershell
-git checkout production
-git pull origin production
-```
-
 ## Demo Video
 
 Project walkthrough video:
@@ -263,3 +252,11 @@ npm test -- --run
 ## Demo Principle
 
 ContractLens should never say "probably" when legal source data is missing. Every risk must show evidence, and missing exhibits or governing documents must produce a refusal state instead of an invented answer.
+
+##Team 6
+
+- Gurnoor Partap Singh Bhogal
+- Himani Agarwal
+- Vinayak Koli
+- Vishal Kumar
+- Vriti Goyal
