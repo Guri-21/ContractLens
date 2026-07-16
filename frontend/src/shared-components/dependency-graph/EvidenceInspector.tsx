@@ -13,10 +13,10 @@ type EvidenceInspectorProps = {
 
 export function EvidenceInspector({ clause, risks, linkedClauses, unresolvedTargets, onClose, onSelectClause }: EvidenceInspectorProps) {
   return (
-    <aside aria-label="Evidence inspector" className="fixed inset-x-0 bottom-0 z-20 max-h-[72vh] overflow-y-auto border-t border-legal-border bg-legal-surface shadow-[0_-4px_15px_rgba(0,0,0,0.08)] md:static md:h-full md:max-h-none md:w-80 md:border-l md:border-t-0 md:shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
+    <aside aria-label="Evidence inspector" className="fixed inset-x-0 bottom-0 z-20 max-h-[72vh] overflow-y-auto border-t border-legal-border bg-legal-surface shadow-[0_-4px_15px_rgba(0,0,0,0.08)] lg:static lg:h-full lg:max-h-none lg:w-80 lg:border-l lg:border-t-0 lg:shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
       <header className="sticky top-0 flex items-center justify-between border-b border-legal-border bg-legal-bg p-4">
         <h2 className="truncate pr-2 font-mono text-xs font-semibold uppercase tracking-widest text-legal-text">Evidence inspector</h2>
-        <button type="button" onClick={onClose} aria-label="Close evidence inspector" className="text-legal-meta transition-colors hover:text-legal-text">
+        <button type="button" onClick={onClose} aria-label="Close inspector" className="text-legal-meta transition-colors hover:text-legal-text">
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </header>

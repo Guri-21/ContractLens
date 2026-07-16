@@ -134,7 +134,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
         </main>
       </div>
 
-      <div className="w-[320px] flex-shrink-0 h-full z-20 border-l border-legal-border bg-legal-surface shadow-[-1px_0_10px_rgba(0,0,0,0.03)]">
+      <div className="relative hidden w-[320px] flex-shrink-0 h-full border-l border-legal-border bg-legal-surface shadow-[-1px_0_10px_rgba(0,0,0,0.03)] 2xl:block">
         <AiLegalAssistant />
       </div>
     </div>

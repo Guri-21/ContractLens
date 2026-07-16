@@ -57,20 +57,20 @@ export default function AppShell({
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       {/* TOP BAR */}
-      <header className="h-[60px] flex-none bg-[#0F172A] flex items-center justify-between px-6 sticky top-0 z-30">
-        <div className="flex items-center gap-3.5">
-          <div className="font-mono text-sm tracking-[0.2em] text-[#F8FAFC] uppercase">
+      <header className="sticky top-0 z-30 flex min-h-[60px] flex-none flex-wrap items-center justify-between gap-3 bg-[#0F172A] px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="shrink-0 font-mono text-sm uppercase tracking-[0.2em] text-[#F8FAFC]">
             Contract<span className="text-accent">Lens</span>
           </div>
-          <div className="w-[1px] h-[22px] bg-[#334155]"></div>
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-[#94A3B8]">
+          <div className="hidden h-[22px] w-[1px] bg-[#334155] sm:block"></div>
+          <div className="hidden truncate font-mono text-[11px] uppercase tracking-[0.14em] text-[#94A3B8] sm:block">
             {workspaceLabel}
           </div>
         </div>
 
-        <div className="flex items-center gap-[18px]">
-          <div className="flex items-center gap-0 bg-[#1E293B] rounded p-[3px]">
-            <span className="font-mono text-[9px] tracking-[0.12em] text-[#64748B] px-2 uppercase">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-[18px]">
+          <div className="flex items-center gap-0 rounded bg-[#1E293B] p-[3px]">
+            <span className="hidden px-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#64748B] sm:inline">
               Accent
             </span>
             <button
@@ -95,13 +95,13 @@ export default function AppShell({
             </button>
           </div>
           
-          <div className="w-[1px] h-[22px] bg-[#334155]"></div>
+          <div className="hidden h-[22px] w-[1px] bg-[#334155] lg:block"></div>
 
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-accent text-[#0F172A] flex items-center justify-center font-bold text-xs">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-[#0F172A]">
               {userInitials}
             </div>
-            <div className="leading-tight">
+            <div className="hidden leading-tight md:block">
               <div className="text-[13px] font-semibold text-[#F8FAFC] whitespace-nowrap">{userName}</div>
               <div className="text-[11px] text-[#94A3B8]">{roleLabel}</div>
             </div>
@@ -116,9 +116,9 @@ export default function AppShell({
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex min-h-0 flex-1">
         {/* SIDEBAR */}
-        <nav className="w-[246px] flex-none bg-white border-r border-[#E2E8F0] py-6.5 flex flex-col">
+        <nav className="hidden w-[246px] flex-none flex-col border-r border-[#E2E8F0] bg-white py-6.5 md:flex">
           <div className="px-5 pb-1">
             <div className="font-mono text-[10px] tracking-[0.2em] text-[#94A3B8] uppercase mb-3.5">
               {sectionLabel}
@@ -165,8 +165,8 @@ export default function AppShell({
         </nav>
 
         {/* MAIN VIEWS */}
-        <main className="cl-scroll flex-1 min-w-0 overflow-y-auto px-10 py-[34px] pb-[60px]">
-          <div className="max-w-[1160px] mx-auto">
+        <main className="cl-scroll min-w-0 flex-1 overflow-y-auto px-4 py-6 pb-[60px] sm:px-6 lg:px-10 lg:py-[34px]">
+          <div className="mx-auto max-w-[1160px]">
             {children}
           </div>
         </main>

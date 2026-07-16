@@ -13,7 +13,7 @@ const relationshipItems = [
 
 export function GraphLegend() {
   return (
-    <aside aria-label="Dependency graph legend" className="absolute left-4 top-4 z-10 max-w-[calc(100%-2rem)] border border-legal-border bg-white/95 p-3 shadow-sm">
+    <aside aria-label="Dependency graph legend" className="pointer-events-none absolute bottom-4 right-4 z-10 max-w-[calc(100%-2rem)] border border-legal-border bg-white/95 p-3 shadow-sm">
       <div className="flex flex-wrap gap-x-3 gap-y-2">
         {statusItems.map((item) => <LegendItem key={item.label} {...item} />)}
       </div>

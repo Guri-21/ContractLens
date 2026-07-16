@@ -160,16 +160,14 @@ export function DependencyGraph({ clauses, risks }: DependencyGraphProps) {
         </div>
 
         {selectedNode && (
-          <div className="md:max-lg:[&_[aria-label='Evidence_inspector']]:!fixed md:max-lg:[&_[aria-label='Evidence_inspector']]:!inset-x-0 md:max-lg:[&_[aria-label='Evidence_inspector']]:!bottom-0 md:max-lg:[&_[aria-label='Evidence_inspector']]:!z-20 md:max-lg:[&_[aria-label='Evidence_inspector']]:!h-auto md:max-lg:[&_[aria-label='Evidence_inspector']]:!max-h-[72vh] md:max-lg:[&_[aria-label='Evidence_inspector']]:!w-auto md:max-lg:[&_[aria-label='Evidence_inspector']]:!border-l-0 md:max-lg:[&_[aria-label='Evidence_inspector']]:!border-t">
-            <EvidenceInspector
-              clause={selectedNode.data.clause}
-              risks={selectedNode.data.risks}
-              linkedClauses={linkedClauses}
-              unresolvedTargets={unresolvedTargets}
-              onClose={clearFocus}
-              onSelectClause={setSelectedNodeId}
-            />
-          </div>
+          <EvidenceInspector
+            clause={selectedNode.data.clause}
+            risks={selectedNode.data.risks}
+            linkedClauses={linkedClauses}
+            unresolvedTargets={unresolvedTargets}
+            onClose={clearFocus}
+            onSelectClause={setSelectedNodeId}
+          />
         )}
       </div>
     </div>
