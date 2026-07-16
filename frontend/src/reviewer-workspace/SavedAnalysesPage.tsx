@@ -26,9 +26,6 @@ export const SavedAnalysesPage: React.FC = () => {
     if (cached) {
       setDocuments(cached);
       setLoading(false);
-      return () => {
-        active = false;
-      };
     }
     loadDocuments().finally(() => {
       if (active) setLoading(false);
