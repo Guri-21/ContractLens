@@ -36,6 +36,16 @@ async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), curr
             "role_id": role.id
         }
     )
+
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id,
+            "action": "CREATE_LEGAL_ADVISOR",
+            "target_type": "User",
+            "target_id": user.id,
+        }
+    )
+
     return {"id": user.id, "email": user.email, "role": "Legal Reviewer"}
 
 @router.delete("/{user_id}")
@@ -52,4 +62,14 @@ async def delete_advisor(user_id: str, db: Prisma = Depends(get_db), current_use
         raise HTTPException(status_code=403, detail="Cannot delete other admins")
         
     await db.user.delete(where={"id": user_id})
+
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id,
+            "action": "DELETE_LEGAL_ADVISOR",
+            "target_type": "User",
+            "target_id": user_id,
+        }
+    )
+
     return {"status": "success", "deleted_id": user_id}

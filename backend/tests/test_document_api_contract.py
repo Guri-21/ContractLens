@@ -106,21 +106,38 @@ def test_analysis_validation_rejects_inaccessible_requested_document():
 class FakeDocumentTable:
     def __init__(self):
         self.created = []
+        self.updated = []
 
     async def create(self, data):
         self.created.append(data)
         return SimpleNamespace(id="document-1", status=data["status"])
 
+    async def update(self, where, data):
+        self.updated.append({"where": where, "data": data})
+        return SimpleNamespace(id=where["id"], assigned_to_id=data.get("assigned_to_id"))
+
 
 class FakeAuditLogTable:
+    def __init__(self):
+        self.created = []
+
     async def create(self, data):
+        self.created.append(data)
         return data
+
+
+class FakeUserTable:
+    async def find_unique(self, where, include=None):
+        if where.get("id") == "advisor-1":
+            return SimpleNamespace(id="advisor-1", role=SimpleNamespace(name="Legal Reviewer"))
+        return None
 
 
 class FakeDatabase:
     def __init__(self):
         self.document = FakeDocumentTable()
         self.auditlog = FakeAuditLogTable()
+        self.user = FakeUserTable()
 
 
 def build_document_client(current_user=None):
@@ -181,3 +198,20 @@ def test_legacy_document_analyze_route_is_unavailable():
     response = client.post("/api/documents/document-1/analyze")
 
     assert response.status_code == 404
+
+
+def test_assign_document_writes_audit_event():
+    client, database = build_document_client(user_with_role("Admin"))
+
+    response = client.post(
+        "/api/documents/document-1/assign",
+        json={"assigned_to_id": "advisor-1"},
+    )
+
+    assert response.status_code == 200
+    assert database.auditlog.created[-1] == {
+        "user_id": "admin-1",
+        "action": "ASSIGN_MSA",
+        "target_type": "Document",
+        "target_id": "document-1",
+    }

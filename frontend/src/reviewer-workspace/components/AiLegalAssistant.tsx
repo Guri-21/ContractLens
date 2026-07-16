@@ -46,13 +46,13 @@ export const AiLegalAssistant: React.FC<AiLegalAssistantProps> = ({ clauses = []
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-200">
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
+    <div className="flex h-full min-h-0 flex-col bg-white border-l border-gray-200">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
         <BookOpen className="h-5 w-5 text-indigo-600 mr-2" />
         <h2 className="font-semibold text-gray-800 text-sm">Grounded Legal Advice</h2>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
@@ -87,7 +87,7 @@ export const AiLegalAssistant: React.FC<AiLegalAssistantProps> = ({ clauses = []
         ))}
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-200">
+      <div className="flex-shrink-0 p-4 bg-white border-t border-gray-200">
         <form onSubmit={handleSend} className="relative flex items-center">
           <input
             type="text"

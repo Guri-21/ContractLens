@@ -10,8 +10,6 @@ interface AppShellProps {
   role: 'admin' | 'reviewer';
   currentNav: string;
   onNavigate: (nav: string) => void;
-  accentKey: 'gold' | 'crimson';
-  onChangeAccent: (accent: 'gold' | 'crimson') => void;
   onSwitchRole: () => void;
   pendingContractsCount: number;
   userEmail?: string | null;
@@ -22,8 +20,6 @@ export default function AppShell({
   role,
   currentNav,
   onNavigate,
-  accentKey,
-  onChangeAccent,
   onSwitchRole,
   pendingContractsCount,
   userEmail,
@@ -71,34 +67,6 @@ export default function AppShell({
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-[18px]">
-          <div className="flex items-center gap-0 rounded bg-[#1E293B] p-[3px]">
-            <span className="hidden px-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#64748B] sm:inline">
-              Accent
-            </span>
-            <button
-              onClick={() => onChangeAccent('gold')}
-              className={`font-mono text-[11px] font-semibold px-[11px] py-[5px] rounded-[3px] transition-all ${
-                accentKey === 'gold'
-                  ? 'bg-[#9C7A3C] text-[#0F172A]'
-                  : 'bg-transparent text-[#94A3B8] hover:text-[#F8FAFC]'
-              }`}
-            >
-              Gold
-            </button>
-            <button
-              onClick={() => onChangeAccent('crimson')}
-              className={`font-mono text-[11px] font-semibold px-[11px] py-[5px] rounded-[3px] transition-all ${
-                accentKey === 'crimson'
-                  ? 'bg-[#8B2635] text-[#0F172A]'
-                  : 'bg-transparent text-[#94A3B8] hover:text-[#F8FAFC]'
-              }`}
-            >
-              Crimson
-            </button>
-          </div>
-          
-          <div className="hidden h-[22px] w-[1px] bg-[#334155] lg:block"></div>
-
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-[#0F172A]">
               {userInitials}

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './client';
+import { cachedRequest } from './cache';
 
 export interface AdvisorAnalyticsResponse {
   advisor: {
@@ -56,18 +57,25 @@ const getHeaders = () => {
   };
 };
 
-export const fetchAdvisorAnalytics = async (advisorId: string): Promise<AdvisorAnalyticsResponse> => {
+export const fetchAdvisorAnalytics = async (
+  advisorId: string,
+  options: { force?: boolean } = {},
+): Promise<AdvisorAnalyticsResponse> => {
+  return cachedRequest(`admin-analytics:advisor:${advisorId}`, async () => {
   const res = await fetch(`${API_BASE_URL}/api/admin/advisors/${advisorId}/analytics`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch advisor analytics');
   return res.json();
+  }, options);
 };
 
-export const fetchGlobalAnalytics = async (): Promise<GlobalAnalyticsResponse> => {
+export const fetchGlobalAnalytics = async (options: { force?: boolean } = {}): Promise<GlobalAnalyticsResponse> => {
+  return cachedRequest('admin-analytics:global', async () => {
   const res = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch global analytics');
   return res.json();
+  }, options);
 };

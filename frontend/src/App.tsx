@@ -19,11 +19,6 @@ import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
 import { SavedAnalysesPage } from './reviewer-workspace/SavedAnalysesPage';
 
-const ACCENTS = {
-  gold: { color: '#9C7A3C', hover: '#8B6A2D', soft: '#F4F0E8', text: '#5C4A29' },
-  crimson: { color: '#8B2635', hover: '#7A1C28', soft: '#F4E8EA', text: '#591621' },
-};
-
 export default function App() {
   return (
     <AuthProvider>
@@ -67,19 +62,10 @@ function LegalAdvisorPortal() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, email } = useAuth();
-  const [accentKey, setAccentKey] = useState<'gold' | 'crimson'>('gold');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [risks, setRisks] = useState<unknown[]>([]);
   const [riskTab, setRiskTab] = useState<'dept' | 'country' | 'clause'>('dept');
   const [modalType, setModalType] = useState<'export' | null>(null);
-
-  useEffect(() => {
-    const accent = ACCENTS[accentKey];
-    document.documentElement.style.setProperty('--accent', accent.color);
-    document.documentElement.style.setProperty('--accent-hover', accent.hover);
-    document.documentElement.style.setProperty('--accent-soft', accent.soft);
-    document.documentElement.style.setProperty('--accent-text', accent.text);
-  }, [accentKey]);
 
   useEffect(() => {
     let active = true;
@@ -137,8 +123,6 @@ function LegalAdvisorPortal() {
         role="reviewer"
         currentNav={currentNav}
         onNavigate={(nav) => navigate(`/advisor/${nav}`)}
-        accentKey={accentKey}
-        onChangeAccent={setAccentKey}
         onSwitchRole={logout}
         pendingContractsCount={pendingContracts}
         userEmail={email}

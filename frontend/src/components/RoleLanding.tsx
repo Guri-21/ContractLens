@@ -151,7 +151,7 @@ export default function RoleLanding({ onSelectRole, accentColor }: RoleLandingPr
       </div>
 
       <div className="mt-10 font-mono text-[11px] text-[#475569] tracking-[0.06em]">
-        DEMO • RUNNING ON HYBRID MODE • CONNECTED BACKEND SERVICE
+        CONNECTED BACKEND SERVICE
       </div>
 
       {/* DYNAMIC SECURE LOGIN DIALOG OVERLAY */}

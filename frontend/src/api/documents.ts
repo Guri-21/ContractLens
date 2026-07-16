@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './client';
+import { cachedRequest, invalidateAdminDataCache } from './cache';
 import type { DocumentType } from '../lib/types';
 
 export interface BackendDocument {
@@ -26,7 +27,8 @@ export interface BackendDocument {
   }>;
 }
 
-export async function fetchBackendDocuments(): Promise<BackendDocument[]> {
+export async function fetchBackendDocuments(options: { force?: boolean } = {}): Promise<BackendDocument[]> {
+  return cachedRequest('documents:list', async () => {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {};
   if (token) {
@@ -36,6 +38,7 @@ export async function fetchBackendDocuments(): Promise<BackendDocument[]> {
   const res = await fetch(`${API_BASE_URL}/api/documents`, { headers });
   if (!res.ok) throw new Error('Failed to fetch backend documents');
   return res.json();
+  }, options);
 }
 
 export async function uploadDocument(file: File, documentType: DocumentType) {
@@ -59,6 +62,7 @@ export async function uploadDocument(file: File, documentType: DocumentType) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || `Upload failed for ${file.name}`);
   }
+  invalidateAdminDataCache();
   return res.json();
 }
 
@@ -78,6 +82,7 @@ export async function uploadAdminMsa(file: File, assignedToId?: string) {
   });
   
   if (!res.ok) throw new Error('Admin upload failed');
+  invalidateAdminDataCache();
   return res.json();
 }
 
@@ -93,6 +98,7 @@ export async function assignMsa(documentId: string, assignedToId: string) {
   });
   
   if (!res.ok) throw new Error('Failed to assign MSA');
+  invalidateAdminDataCache();
   return res.json();
 }
 
@@ -110,5 +116,6 @@ export async function deleteMsa(documentId: string) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || 'Failed to delete MSA');
   }
+  invalidateAdminDataCache();
   return res.json();
 }

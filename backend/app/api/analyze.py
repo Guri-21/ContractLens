@@ -78,22 +78,52 @@ async def analyze_documents(
 
     rules = await db.playbookrule.find_many(where={"is_active": True})
     playbook_rules = [f"{rule.title}: {rule.description}" for rule in rules]
-    result = await run_in_threadpool(run_analysis_pipeline, doc_dicts, playbook_rules, req.countryCode)
 
-    for doc in doc_dicts:
-        await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": doc["id"]}}})
-        await db.clause.delete_many(where={"document_id": doc["id"]})
+    analysis_target_id = req.sowDocumentId
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id,
+            "action": "ANALYSIS_STARTED",
+            "target_type": "AnalysisPackage",
+            "target_id": analysis_target_id,
+        }
+    )
 
-    for clause in result["clauses"]:
-        await db.clause.create(data=_clause_db_payload(clause))
+    try:
+        result = await run_in_threadpool(run_analysis_pipeline, doc_dicts, playbook_rules, req.countryCode)
 
-    for finding in result["findings"]:
-        await db.riskfinding.create(data=_finding_db_payload(finding))
+        for doc in doc_dicts:
+            await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": doc["id"]}}})
+            await db.clause.delete_many(where={"document_id": doc["id"]})
 
-    for doc in doc_dicts:
-        await db.document.update(where={"id": doc["id"]}, data={"status": "analyzed"})
+        for clause in result["clauses"]:
+            await db.clause.create(data=_clause_db_payload(clause))
 
-    return _api_result(result)
+        for finding in result["findings"]:
+            await db.riskfinding.create(data=_finding_db_payload(finding))
+
+        for doc in doc_dicts:
+            await db.document.update(where={"id": doc["id"]}, data={"status": "analyzed"})
+
+        await db.auditlog.create(
+            data={
+                "user_id": current_user.id,
+                "action": "ANALYSIS_COMPLETED",
+                "target_type": "AnalysisPackage",
+                "target_id": analysis_target_id,
+            }
+        )
+        return _api_result(result)
+    except Exception:
+        await db.auditlog.create(
+            data={
+                "user_id": current_user.id,
+                "action": "ANALYSIS_FAILED",
+                "target_type": "AnalysisPackage",
+                "target_id": analysis_target_id,
+            }
+        )
+        raise
 
 
 @router.get("")

@@ -152,6 +152,16 @@ async def assign_document(
         where={"id": document_id},
         data={"assigned_to_id": request.assigned_to_id}
     )
+
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id,
+            "action": "ASSIGN_MSA" if request.assigned_to_id else "UNASSIGN_MSA",
+            "target_type": "Document",
+            "target_id": document_id,
+        }
+    )
+
     return {"status": "success", "assigned_to": doc.assigned_to_id}
 
 @router.delete("/{document_id}")

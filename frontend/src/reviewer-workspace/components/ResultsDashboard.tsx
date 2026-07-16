@@ -1,5 +1,6 @@
 import React from 'react';
 import { ClauseDTO, RiskFindingDTO } from '../types';
+import { calculateAnalysisScores } from '../analysisScoring';
 
 interface ResultsDashboardProps {
   clauses: ClauseDTO[];
@@ -11,9 +12,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ clauses, ris
   const maxPage = clauses.reduce((max, c) => (c.page && c.page > max ? c.page : max), 1);
   const pageCount = maxPage > 1 ? maxPage : 10; 
   
-  const highRisks = risks.filter(r => r.riskLevel === 'high' || r.riskLevel === 'critical').length;
-  const riskScore = Math.min(100, Math.round((highRisks / (totalClauses || 1)) * 100 * 2.5));
-  const complianceScore = 100 - riskScore;
+  const { riskScore, complianceScore } = calculateAnalysisScores(risks, totalClauses);
   
   const uploadTime = new Date().toLocaleDateString();
   const documentName = clauses.length > 0 ? clauses[0].documentName : "Unknown Document";

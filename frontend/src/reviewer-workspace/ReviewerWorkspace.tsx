@@ -17,6 +17,7 @@ import {
   type ReviewerDecision,
   type ReviewerDecisionMap,
 } from './reviewerDecisions';
+import { calculateAnalysisScores } from './analysisScoring';
 
 type AnalysisTab = 'overview' | 'clauses' | 'risks' | 'graph' | 'redlines' | 'advice' | 'audit';
 
@@ -73,7 +74,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
   const highRiskCount = activeRisks.filter(r => r.riskLevel === 'critical' || r.riskLevel === 'high').length;
   const notEvaluatedCount = activeRisks.filter(r => r.status === 'not_evaluated').length;
   const cleanClauses = clauses.filter(clause => !activeRisks.some(risk => risk.clauseId === clause.id)).length;
-  const score = Math.max(0, 100 - highRiskCount * 5 - notEvaluatedCount * 3);
+  const { riskScore } = calculateAnalysisScores(activeRisks, clauses.length);
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-legal-surface border-t border-legal-border font-body">
@@ -149,7 +150,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
             <div className="h-full overflow-y-auto p-6 cl-scroll">
               <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_320px]">
                 <ApprovalPanel status={documentStatus} onUpdateStatus={(newStatus) => setDocumentStatus(newStatus)} />
-                <ReportExport findings={activeRisks} score={score} />
+                <ReportExport findings={activeRisks} score={riskScore} />
                 <AuditSummary clauses={clauses} risks={activeRisks} status={documentStatus} />
               </div>
             </div>
@@ -157,18 +158,15 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
         </main>
       </div>
 
-      <div className="relative hidden w-[320px] flex-shrink-0 h-full border-l border-legal-border bg-legal-surface shadow-[-1px_0_10px_rgba(0,0,0,0.03)] 2xl:block">
-        <AiLegalAssistant clauses={clauses} risks={activeRisks} />
-      </div>
     </div>
   );
 };
 
 function LegalAdviceTab({ clauses, risks }: { clauses: ClauseDTO[]; risks: RiskFindingDTO[] }) {
   return (
-    <div className="h-full overflow-hidden p-6">
-      <div className="mx-auto grid h-full max-w-6xl gap-6 lg:grid-cols-[1fr_380px]">
-        <section className="overflow-y-auto border border-legal-border bg-white p-5 shadow-sm cl-scroll">
+    <div className="h-full min-h-0 overflow-hidden p-6">
+      <div className="mx-auto grid h-full min-h-0 max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="min-h-0 overflow-y-auto border border-legal-border bg-white p-5 shadow-sm cl-scroll">
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-legal-meta">Grounded Advice Brain</p>
           <h2 className="mt-1 font-display text-2xl font-semibold text-legal-text">Legal Advice With Source References</h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-legal-meta">
@@ -180,10 +178,12 @@ function LegalAdviceTab({ clauses, risks }: { clauses: ClauseDTO[]; risks: RiskF
             <AdviceStat label="Open risks" value={risks.length} />
           </div>
           <div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <strong>Why this helps:</strong> every response must cite exact source text, so demo reviewers can see why the system said something and can catch missing-data cases instead of trusting hallucinated legal advice.
+            <strong>Why this helps:</strong> every response must cite exact source text, so reviewers can see why the system said something and can catch missing-data cases instead of trusting hallucinated legal advice.
           </div>
         </section>
-        <AiLegalAssistant clauses={clauses} risks={risks} />
+        <div className="min-h-0 overflow-hidden">
+          <AiLegalAssistant clauses={clauses} risks={risks} />
+        </div>
       </div>
     </div>
   );

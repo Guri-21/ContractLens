@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './client';
+import { cachedRequest, invalidateAdminDataCache } from './cache';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -16,12 +17,14 @@ export interface UserResponse {
   assigned_docs?: { id: string; name: string; status: string }[];
 }
 
-export const fetchUsers = async (): Promise<UserResponse[]> => {
+export const fetchUsers = async (options: { force?: boolean } = {}): Promise<UserResponse[]> => {
+  return cachedRequest('users:list', async () => {
   const res = await fetch(`${API_BASE_URL}/api/users/`, {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch users');
   return res.json();
+  }, options);
 };
 
 export const createUser = async (data: { email: string; role_id?: string; password?: string }) => {
@@ -32,6 +35,7 @@ export const createUser = async (data: { email: string; role_id?: string; passwo
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('Failed to create user');
+  invalidateAdminDataCache();
   return res.json();
 };
 
@@ -44,5 +48,6 @@ export const deleteUser = async (id: string) => {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || 'Failed to delete user');
   }
+  invalidateAdminDataCache();
   return res.json();
 };

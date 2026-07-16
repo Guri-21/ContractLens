@@ -18,6 +18,8 @@ DEMO_ADMIN_EMAIL = "admin@contractlens.com"
 DEMO_ADVISOR_PREFIX = "advisor"
 DEMO_ADVISOR_EMAILS = [f"advisor{i}@contractlens.com" for i in range(1, 6)]
 DEMO_USER_EMAILS = [DEMO_ADMIN_EMAIL, *DEMO_ADVISOR_EMAILS]
+ADMIN_ROLE_NAMES = {"Admin"}
+ADVISOR_ROLE_NAMES = {"Legal Reviewer", "Legal Advisor", "Compliance Officer"}
 
 
 def demo_display_name(email: str, role: str) -> str:
@@ -40,6 +42,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.id})
+    await db.auditlog.create(
+        data={
+            "user_id": user.id,
+            "action": "LOGIN_SUCCESS",
+            "target_type": "User",
+            "target_id": user.id,
+        }
+    )
     return {
         "access_token": access_token, 
         "token_type": "bearer",
@@ -48,7 +58,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     }
 
 
-@router.get("/demo-users")
+@router.get("/available-users")
+@router.get("/demo-users", include_in_schema=False)
 async def list_demo_users(db: Prisma = Depends(get_db)):
     users = await db.user.find_many(
         where={
@@ -58,7 +69,7 @@ async def list_demo_users(db: Prisma = Depends(get_db)):
                     "role": {
                         "is": {
                             "name": {
-                                "in": ["Admin", "Legal Reviewer"],
+                            "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
                             }
                         }
                     }
@@ -81,6 +92,6 @@ async def list_demo_users(db: Prisma = Depends(get_db)):
     ]
 
     return {
-        "admins": [user for user in serialized if user["role"] == "Admin"],
-        "advisors": [user for user in serialized if user["role"] == "Legal Reviewer"],
+        "admins": [user for user in serialized if user["role"] in ADMIN_ROLE_NAMES],
+        "advisors": [user for user in serialized if user["role"] in ADVISOR_ROLE_NAMES],
     }

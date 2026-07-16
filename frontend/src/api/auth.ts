@@ -1,9 +1,9 @@
 import { API_BASE_URL } from './client';
 
-export interface DemoUser {
+export interface AvailableUser {
   id: string;
   email: string;
-  role: 'Admin' | 'Legal Reviewer';
+  role: 'Admin' | 'Legal Reviewer' | 'Legal Advisor' | 'Compliance Officer';
   displayName: string;
 }
 
@@ -27,11 +27,11 @@ export const login = async (username: string, password: string) => {
   return res.json();
 };
 
-export const fetchDemoUsers = async (): Promise<{ admins: DemoUser[]; advisors: DemoUser[] }> => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/demo-users`);
+export const fetchAvailableUsers = async (): Promise<{ admins: AvailableUser[]; advisors: AvailableUser[] }> => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/available-users`);
 
   if (!res.ok) {
-    throw new Error('Failed to load available demo users');
+    throw new Error('Failed to load available users');
   }
   return res.json();
 };

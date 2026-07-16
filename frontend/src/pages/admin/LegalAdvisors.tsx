@@ -112,8 +112,27 @@ export default function LegalAdvisors() {
         <h3 className="text-lg font-serif font-bold text-text-dark mb-4">Advisor Directory</h3>
         
         {isLoading ? (
-          <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-            <p className="text-text-light">Loading legal advisors...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-12 w-12 rounded-full bg-slate-200 animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-44 rounded bg-slate-200 animate-pulse" />
+                      <div className="h-5 w-24 rounded-full bg-slate-100 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-4 space-y-2">
+                    <div className="h-10 rounded-md bg-slate-200 animate-pulse" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="h-8 rounded-md bg-slate-100 animate-pulse" />
+                      <div className="h-8 rounded-md bg-slate-100 animate-pulse" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : advisors.length === 0 ? (
           <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">

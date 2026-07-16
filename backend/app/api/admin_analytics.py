@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict, Any
+from datetime import datetime, timedelta, timezone
 from prisma import Prisma
 from app.database import get_db
 from app.api.deps import require_role
@@ -49,7 +50,61 @@ def _generate_ai_insights(advisor_id: str, documents: list) -> list:
             
     return insights
 
-def _aggregate_document_data(documents: list) -> dict:
+def _risk_counts_for_document(doc) -> dict:
+    counts = {"risks": 0, "high": 0, "critical": 0}
+    for clause in (doc.clauses or []):
+        for risk in (clause.risks or []):
+            counts["risks"] += 1
+            if risk.risk_level == "high":
+                counts["high"] += 1
+            elif risk.risk_level == "critical":
+                counts["critical"] += 1
+    return counts
+
+
+def _trend_date_for_document(doc, audit_logs: list, today: datetime) -> str:
+    for log in audit_logs:
+        if log.target_id == doc.id and log.action == "ANALYSIS_COMPLETED":
+            timestamp = log.timestamp
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            return timestamp.astimezone(timezone.utc).date().isoformat()
+    return today.date().isoformat()
+
+
+def _build_risk_trend(documents: list, audit_logs: list | None = None) -> list:
+    audit_logs = audit_logs or []
+    today = datetime.now(timezone.utc)
+    start_date = today.date() - timedelta(days=6)
+    buckets = {
+        (start_date + timedelta(days=offset)).isoformat(): {
+            "date": (start_date + timedelta(days=offset)).strftime("%b %d"),
+            "risks": 0,
+            "high": 0,
+            "critical": 0,
+        }
+        for offset in range(7)
+    }
+
+    has_risk_data = False
+    for doc in documents:
+        counts = _risk_counts_for_document(doc)
+        if counts["risks"] == 0:
+            continue
+
+        has_risk_data = True
+        bucket_key = _trend_date_for_document(doc, audit_logs, today)
+        if bucket_key not in buckets:
+            continue
+
+        buckets[bucket_key]["risks"] += counts["risks"]
+        buckets[bucket_key]["high"] += counts["high"]
+        buckets[bucket_key]["critical"] += counts["critical"]
+
+    return list(buckets.values()) if has_risk_data else []
+
+
+def _aggregate_document_data(documents: list, audit_logs: list | None = None) -> dict:
     total_clauses = 0
     total_risks = 0
     high_risk_count = 0
@@ -138,7 +193,7 @@ def _aggregate_document_data(documents: list) -> dict:
         ],
         "clauseTypeRisk": list(clause_type_risk.values()),
         "documentAnalytics": document_analytics,
-        "trend": []
+        "trend": _build_risk_trend(documents, audit_logs)
     }
 
 @router.get("/advisors/{advisor_id}/analytics")
@@ -162,8 +217,15 @@ async def get_advisor_analytics(advisor_id: str, db: Prisma = Depends(get_db), c
             }
         }
     )
+    document_ids = [document.id for document in documents]
+    audit_logs = await db.auditlog.find_many(
+        where={
+            "action": "ANALYSIS_COMPLETED",
+            "target_id": {"in": document_ids},
+        }
+    )
 
-    aggregated = _aggregate_document_data(documents)
+    aggregated = _aggregate_document_data(documents, audit_logs)
     
     return {
         "advisor": {
@@ -187,8 +249,15 @@ async def get_global_analytics(db: Prisma = Depends(get_db), current_user = Depe
             "assigned_to": True
         }
     )
+    document_ids = [document.id for document in documents]
+    audit_logs = await db.auditlog.find_many(
+        where={
+            "action": "ANALYSIS_COMPLETED",
+            "target_id": {"in": document_ids},
+        }
+    )
     
-    aggregated = _aggregate_document_data(documents)
+    aggregated = _aggregate_document_data(documents, audit_logs)
     
     # Advisor Leaderboard
     advisors_perf = {}

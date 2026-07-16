@@ -5,12 +5,14 @@ import { fetchBackendDocuments } from '../../api/documents';
 import { fetchUsers } from '../../api/users';
 
 export default function AdminDashboard() {
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ msas: 0, users: 0, highRisk: 0, completed: 0 });
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
   const [advisors, setAdvisors] = useState<any[]>([]);
 
   useEffect(() => {
     const loadStats = async () => {
+      setIsLoading(true);
       try {
         const [docs, usersList] = await Promise.all([
           fetchBackendDocuments(),
@@ -41,6 +43,8 @@ export default function AdminDashboard() {
 
       } catch (err) {
         console.error("Failed to load stats", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadStats();
@@ -68,7 +72,11 @@ export default function AdminDashboard() {
             <CardContent className="p-6 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-text-light mb-1">{s.title}</p>
-                <h3 className="text-3xl font-bold text-text-dark">{s.value}</h3>
+                {isLoading ? (
+                  <div className="mt-2 h-9 w-16 rounded-md bg-slate-200 animate-pulse" />
+                ) : (
+                  <h3 className="text-3xl font-bold text-text-dark">{s.value}</h3>
+                )}
               </div>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${s.bg}`}>
                 <s.icon className={`w-6 h-6 ${s.color}`} />
@@ -84,7 +92,9 @@ export default function AdminDashboard() {
             <CardTitle>System Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats.msas === 0 ? (
+            {isLoading ? (
+               <ActivityBarsSkeleton />
+            ) : stats.msas === 0 ? (
                <div className="flex items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
                  No activity recorded yet.
                </div>
@@ -107,7 +117,9 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 mt-2 h-64 overflow-y-auto">
-              {recentDocs.length === 0 ? (
+              {isLoading ? (
+                <ListSkeleton />
+              ) : recentDocs.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-400 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
                   No documents uploaded.
                 </div>
@@ -146,7 +158,9 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {advisors.length === 0 ? (
+                  {isLoading ? (
+                    <DirectorySkeleton />
+                  ) : advisors.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="py-8 text-center text-slate-400 text-sm">
                         No legal advisors added yet.
@@ -181,5 +195,55 @@ export default function AdminDashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function ActivityBarsSkeleton() {
+  return (
+    <div className="flex items-end gap-2 h-64 mt-4 w-full justify-between rounded-lg border border-slate-100 bg-slate-50/50 p-4">
+      {[40, 65, 52, 80, 48, 90, 62, 74].map((height, index) => (
+        <div key={index} className="w-full rounded-t-md bg-slate-200 animate-pulse" style={{ height: `${height}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <>
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="flex items-center gap-4 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+          <div className="h-10 w-10 rounded-full bg-slate-200 animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-48 rounded bg-slate-200 animate-pulse" />
+            <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
+          </div>
+          <div className="h-6 w-20 rounded bg-slate-200 animate-pulse" />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function DirectorySkeleton() {
+  return (
+    <>
+      {[1, 2, 3, 4].map(i => (
+        <tr key={i} className="border-b border-slate-50">
+          <td className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-slate-200 animate-pulse" />
+              <div className="h-4 w-52 rounded bg-slate-200 animate-pulse" />
+            </div>
+          </td>
+          <td className="py-4">
+            <div className="h-4 w-28 rounded bg-slate-100 animate-pulse" />
+          </td>
+          <td className="py-4 text-right">
+            <div className="ml-auto h-6 w-16 rounded-full bg-slate-200 animate-pulse" />
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }

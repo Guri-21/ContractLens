@@ -9,6 +9,7 @@ import {
 import { FileText, AlertTriangle, Clock, Trophy } from 'lucide-react';
 
 export default function Analytics() {
+  const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<GlobalAnalyticsResponse>({
     summary: {
       totalDocuments: 0,
@@ -30,11 +31,14 @@ export default function Analytics() {
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
       try {
         const analytics = await fetchGlobalAnalytics();
         setData(analytics);
       } catch (err) {
         console.error("Failed to load global analytics", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
@@ -53,10 +57,10 @@ export default function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Reviewed" value={summary.totalDocuments} icon={<FileText className="w-5 h-5 text-blue-500" />} />
-        <StatCard title="Avg Risk Score" value={summary.averageRiskScore} icon={<AlertTriangle className="w-5 h-5 text-amber-500" />} />
-        <StatCard title="High/Critical Risks" value={summary.highRiskCount + summary.criticalRiskCount} icon={<AlertTriangle className="w-5 h-5 text-red-500" />} />
-        <StatCard title="Pending Docs" value={summary.pendingDocuments} icon={<Clock className="w-5 h-5 text-slate-500" />} />
+        <StatCard title="Total Reviewed" value={summary.totalDocuments} icon={<FileText className="w-5 h-5 text-blue-500" />} isLoading={isLoading} />
+        <StatCard title="Avg Risk Score" value={summary.averageRiskScore} icon={<AlertTriangle className="w-5 h-5 text-amber-500" />} isLoading={isLoading} />
+        <StatCard title="High/Critical Risks" value={summary.highRiskCount + summary.criticalRiskCount} icon={<AlertTriangle className="w-5 h-5 text-red-500" />} isLoading={isLoading} />
+        <StatCard title="Pending Docs" value={summary.pendingDocuments} icon={<Clock className="w-5 h-5 text-slate-500" />} isLoading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -65,7 +69,7 @@ export default function Analytics() {
             <CardTitle>Enterprise Risk Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <RiskDistributionDonut data={data.riskDistribution} />
+            {isLoading ? <ChartSkeleton /> : <RiskDistributionDonut data={data.riskDistribution} />}
           </CardContent>
         </Card>
 
@@ -74,7 +78,7 @@ export default function Analytics() {
             <CardTitle>Risk Trend (Last 7 Days)</CardTitle>
           </CardHeader>
           <CardContent>
-            <RiskTrendLineChart data={data.trend} />
+            {isLoading ? <ChartSkeleton /> : <RiskTrendLineChart data={data.trend} />}
           </CardContent>
         </Card>
 
@@ -83,7 +87,7 @@ export default function Analytics() {
             <CardTitle>Aggregate Legal Risk Fingerprint</CardTitle>
           </CardHeader>
           <CardContent>
-            <LegalRiskFingerprint data={data.clauseTypeRisk} />
+            {isLoading ? <ChartSkeleton /> : <LegalRiskFingerprint data={data.clauseTypeRisk} />}
           </CardContent>
         </Card>
 
@@ -106,7 +110,9 @@ export default function Analytics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaderboard.map((adv, idx) => (
+                  {isLoading ? (
+                    <TableSkeletonRows columns={4} rows={5} />
+                  ) : leaderboard.map((adv, idx) => (
                     <tr key={adv.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                       <td className="p-3 flex items-center gap-3">
                         <span className={`font-bold w-4 ${idx === 0 ? 'text-amber-500' : idx === 1 ? 'text-slate-400' : idx === 2 ? 'text-amber-700' : 'text-slate-300'}`}>
@@ -121,7 +127,7 @@ export default function Analytics() {
                       <td className="p-3 text-right text-sm text-status-danger font-semibold">{adv.highRisks}</td>
                     </tr>
                   ))}
-                  {leaderboard.length === 0 && (
+                  {!isLoading && leaderboard.length === 0 && (
                     <tr>
                       <td colSpan={4} className="p-6 text-center text-slate-400 text-sm">No activity recorded.</td>
                     </tr>
@@ -137,7 +143,11 @@ export default function Analytics() {
             <CardTitle>Top High Risk Documents</CardTitle>
           </CardHeader>
           <CardContent>
-            {highRiskDocs.length === 0 ? (
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => <DocumentSkeleton key={i} />)}
+              </div>
+            ) : highRiskDocs.length === 0 ? (
               <div className="text-sm text-text-light italic">No high risk documents found. Excellent!</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -168,16 +178,61 @@ export default function Analytics() {
   );
 }
 
-function StatCard({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) {
+function StatCard({ title, value, icon, isLoading = false }: { title: string, value: string | number, icon: React.ReactNode, isLoading?: boolean }) {
   return (
     <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex items-start justify-between group hover:border-primary/50 transition-colors">
       <div>
         <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">{title}</p>
-        <p className="text-3xl font-bold text-text-dark">{value}</p>
+        {isLoading ? (
+          <div className="h-9 w-20 rounded-md bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 bg-[length:200%_100%] animate-pulse" />
+        ) : (
+          <p className="text-3xl font-bold text-text-dark">{value}</p>
+        )}
       </div>
       <div className="p-3 bg-slate-50 rounded-lg group-hover:bg-primary/5 transition-colors">
         {icon}
       </div>
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="h-[250px] rounded-xl border border-slate-100 bg-slate-50/60 p-6">
+      <div className="flex h-full items-end gap-3">
+        {[48, 72, 54, 86, 66, 92, 74].map((height, index) => (
+          <div key={index} className="flex-1 rounded-t-lg bg-gradient-to-t from-slate-200 to-slate-100 animate-pulse" style={{ height: `${height}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TableSkeletonRows({ rows, columns }: { rows: number; columns: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, row) => (
+        <tr key={row} className="border-b border-slate-50">
+          {Array.from({ length: columns }).map((__, col) => (
+            <td key={col} className="p-3">
+              <div className={`h-4 rounded bg-slate-100 animate-pulse ${col === 0 ? 'w-32' : 'w-12 mx-auto'}`} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function DocumentSkeleton() {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+      <div className="mb-3 flex justify-between gap-4">
+        <div className="h-4 w-36 rounded bg-slate-200 animate-pulse" />
+        <div className="h-5 w-16 rounded-full bg-slate-200 animate-pulse" />
+      </div>
+      <div className="mb-3 h-3 w-48 rounded bg-slate-100 animate-pulse" />
+      <div className="h-12 rounded border border-slate-100 bg-white animate-pulse" />
     </div>
   );
 }

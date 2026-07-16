@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './client';
+import { invalidateAdminDataCache } from './cache';
 
 export async function fetchAllRisks() {
   const token = localStorage.getItem('token');
@@ -37,6 +38,7 @@ export async function fetchBackendAnalyze(payload: AnalysisPackageRequest) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || 'Failed to analyze the contract package');
   }
+  invalidateAdminDataCache();
   return res.json();
 }
 
