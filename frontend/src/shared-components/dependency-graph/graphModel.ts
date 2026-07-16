@@ -52,6 +52,7 @@ export interface GraphModel {
 }
 
 export interface GraphFilters {
+  searchQuery?: string;
   documentIds?: readonly string[];
   statuses?: readonly ClauseVisualStatus[];
   relationshipTypes?: readonly RelationshipType[];
@@ -122,15 +123,22 @@ export function buildGraphModel(
 }
 
 export function filterGraphModel(model: GraphModel, filters: GraphFilters): GraphModel {
+  const searchQuery = filters.searchQuery?.trim().toLocaleLowerCase();
   const documentIds = filters.documentIds ? new Set(filters.documentIds) : undefined;
   const statuses = filters.statuses ? new Set(filters.statuses) : undefined;
   const relationshipTypes = filters.relationshipTypes
     ? new Set(filters.relationshipTypes)
     : undefined;
   const nodes = model.nodes.filter((node) => {
+    const clause = node.data.clause;
+    const searchableText = [clause.text, clause.title, clause.sectionNumber, clause.documentName]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase();
+    const matchesSearch = !searchQuery || searchableText.includes(searchQuery);
     const matchesDocument = !documentIds || documentIds.has(node.data.clause.documentId);
     const matchesStatus = !statuses || statuses.has(node.data.status);
-    return matchesDocument && matchesStatus;
+    return matchesSearch && matchesDocument && matchesStatus;
   });
   const visibleNodeIds = new Set(nodes.map((node) => node.id));
   const edges = model.edges.filter((edge) => {

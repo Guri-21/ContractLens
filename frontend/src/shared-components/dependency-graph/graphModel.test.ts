@@ -5,6 +5,7 @@ import {
   buildGraphModel,
   filterGraphModel,
   getFocusedElementIds,
+  type GraphFilters,
 } from './graphModel';
 
 const clauses: ClauseDTO[] = [
@@ -24,6 +25,7 @@ const clauses: ClauseDTO[] = [
     documentName: 'Master Services Agreement',
     documentType: 'MSA',
     sectionNumber: '2.2',
+    title: 'Monthly invoicing',
     text: 'Invoices are issued monthly.',
     references: [],
     overrides: [],
@@ -181,6 +183,19 @@ describe('document-lane graph model', () => {
     expect(filtered.lanes.map((lane) => lane.documentId)).toEqual(['sow-1']);
   });
 
+  it('filters case-insensitively across clause text, title, section, and document name', () => {
+    const model = buildGraphModel(clauses, risks);
+    const search = (searchQuery: string) => filterGraphModel(
+      model,
+      { searchQuery } as GraphFilters & { searchQuery: string },
+    );
+
+    expect(search('THIRTY DAYS').nodes.map((node) => node.id)).toEqual(['msa-payment']);
+    expect(search('monthly invoicing').nodes.map((node) => node.id)).toEqual(['msa-invoices']);
+    expect(search('2.10').nodes.map((node) => node.id)).toEqual(['msa-payment']);
+    expect(search('master services').nodes.map((node) => node.id)).toEqual(['msa-invoices', 'msa-payment']);
+  });
+
   it('preserves an unresolved edge when its source remains visible after filtering', () => {
     const model = buildGraphModel(clauses, risks);
     const filtered = filterGraphModel(model, { relationshipTypes: ['unresolved'] });
@@ -204,6 +219,16 @@ describe('document-lane graph model', () => {
         'missing-exhibit',
         'sow-payment--reference--msa-payment',
         'sow-payment--unresolved--missing-exhibit',
+        'sow-payment--override--msa-payment',
+        'sow-payment--conflict--msa-payment',
+      ]),
+    );
+
+    expect(getFocusedElementIds(model, 'msa-payment')).toEqual(
+      new Set([
+        'msa-payment',
+        'sow-payment',
+        'sow-payment--reference--msa-payment',
         'sow-payment--override--msa-payment',
         'sow-payment--conflict--msa-payment',
       ]),

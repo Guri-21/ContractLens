@@ -109,19 +109,14 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
           )}
           {activeTab === 'risks' && <RisksTab clauses={clauses} risks={risks} />}
           {activeTab === 'graph' && (
-            <div className="h-full p-6">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-full min-h-0 flex-col p-4 sm:p-6">
+              <div className="flex-shrink-0">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-widest text-legal-meta">Dependency Map</p>
                   <h2 className="font-display text-2xl font-semibold text-legal-text">Clause Dependency Graph</h2>
                 </div>
-                <div className="hidden gap-3 text-xs text-legal-meta lg:flex">
-                  <LegendItem color="bg-green-100 border-green-300" label="No risk" />
-                  <LegendItem color="bg-red-100 border-red-300" label="Risk" />
-                  <LegendItem color="bg-amber-100 border-amber-300" label="Not evaluated" />
-                </div>
               </div>
-              <div className="h-[calc(100%-72px)] overflow-hidden border border-legal-border bg-white shadow-sm">
+              <div className="mt-4 min-h-0 flex-1 overflow-hidden border border-legal-border bg-white shadow-sm">
                 <DependencyGraph clauses={clauses} risks={risks} />
               </div>
             </div>
@@ -304,14 +299,5 @@ function MetricCard({ icon: Icon, label, value, tone }: { icon: typeof FileText;
       <div className="font-display text-3xl font-bold">{value}</div>
       <div className="mt-1 font-mono text-[10px] uppercase tracking-widest">{label}</div>
     </div>
-  );
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={`h-3 w-3 border ${color}`} />
-      {label}
-    </span>
   );
 }
