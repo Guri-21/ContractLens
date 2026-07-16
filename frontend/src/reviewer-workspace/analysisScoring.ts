@@ -31,9 +31,10 @@ export type AnalysisScores = {
 };
 
 export function calculateAnalysisScores(risks: RiskFindingDTO[], totalClauses: number): AnalysisScores {
+  const activeRisks = risks.filter((risk) => !['accepted', 'resolved'].includes(String(risk.status)));
   const maxFindingWeight = RISK_WEIGHTS.critical * 1.35 * 1.3 * 1.1;
   const denominator = Math.max(1, totalClauses) * maxFindingWeight;
-  const weightedRisk = risks.reduce((total, risk) => total + calculateFindingWeight(risk), 0);
+  const weightedRisk = activeRisks.reduce((total, risk) => total + calculateFindingWeight(risk), 0);
   const riskScore = Math.min(100, Math.round((weightedRisk / denominator) * 100));
 
   return {

@@ -18,6 +18,7 @@ import Settings from './pages/admin/Settings';
 import Modal from './components/Modal';
 import { ReviewerWorkspace } from './reviewer-workspace/ReviewerWorkspace';
 import { SavedAnalysesPage } from './reviewer-workspace/SavedAnalysesPage';
+import { calculateAnalysisScores } from './reviewer-workspace/analysisScoring';
 
 export default function App() {
   return (
@@ -151,7 +152,9 @@ function LegalAdvisorPortal() {
 
 function mapDocumentToContract(document: BackendDocument): Contract {
   const risks = flattenDocumentRisks([document]);
-  const score = calculateRiskScore(risks);
+  const score = risks.length > 0
+    ? calculateAnalysisScores(risks as any, document.clauses?.length || risks.length).riskScore
+    : null;
   const mappedStatus = mapDocumentStatus(document.status, risks.length);
   const analysisDate = inferAnalysisDate(document);
 
@@ -196,30 +199,6 @@ function normalizeStandaloneRisks(risks: any[]) {
     contradictionType: risk.contradictionType || risk.contradiction_type || undefined,
     clauseType: risk.clauseType || risk.clause_type || 'General',
   }));
-}
-
-function calculateRiskScore(risks: Array<{ riskLevel?: string; status?: string }>): number | null {
-  if (risks.length === 0) return null;
-
-  const weights: Record<string, number> = {
-    low: 20,
-    medium: 45,
-    high: 70,
-    critical: 96,
-  };
-
-  const evaluatedRisks = risks.filter((risk) => risk.status !== 'accepted' && risk.status !== 'resolved');
-  if (evaluatedRisks.length === 0) return 12;
-
-  const total = evaluatedRisks.reduce((sum, risk) => {
-    if (risk.status === 'not_evaluated') return sum + 55;
-    return sum + (weights[risk.riskLevel || 'low'] || 20);
-  }, 0);
-  const averageSeverity = total / evaluatedRisks.length;
-  const highestSeverity = Math.max(...evaluatedRisks.map((risk) => weights[risk.riskLevel || 'low'] || 20));
-  const densityPenalty = Math.min(14, evaluatedRisks.length * 2);
-
-  return Math.min(100, Math.round(averageSeverity * 0.58 + highestSeverity * 0.32 + densityPenalty));
 }
 
 function mapDocumentStatus(status: string, riskCount: number): Contract['status'] {
