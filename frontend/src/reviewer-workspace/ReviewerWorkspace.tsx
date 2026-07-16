@@ -18,6 +18,7 @@ import {
   type ReviewerDecisionMap,
 } from './reviewerDecisions';
 import { calculateAnalysisScores } from './analysisScoring';
+import { DownloadRedlinedSow } from './components/DownloadRedlinedSow';
 
 type AnalysisTab = 'overview' | 'clauses' | 'risks' | 'graph' | 'redlines' | 'advice' | 'audit';
 
@@ -144,7 +145,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
               </div>
             </div>
           )}
-          {activeTab === 'redlines' && <RedlinesTab clauses={clauses} risks={activeRisks} />}
+          {activeTab === 'redlines' && <RedlinesTab clauses={clauses} risks={activeRisks} reviewerDecisions={reviewerDecisions} />}
           {activeTab === 'advice' && <LegalAdviceTab clauses={clauses} risks={activeRisks} />}
           {activeTab === 'audit' && (
             <div className="h-full overflow-y-auto p-6 cl-scroll">
@@ -275,11 +276,12 @@ function RisksTab({ clauses, risks }: { clauses: ClauseDTO[]; risks: RiskFinding
   );
 }
 
-function RedlinesTab({ clauses, risks }: { clauses: ClauseDTO[]; risks: RiskFindingDTO[] }) {
+function RedlinesTab({ clauses, risks, reviewerDecisions }: { clauses: ClauseDTO[]; risks: RiskFindingDTO[]; reviewerDecisions: ReviewerDecisionMap }) {
   const redlines = risks.filter(risk => risk.redline);
   return (
     <div className="h-full overflow-y-auto p-6 cl-scroll">
       <div className="mx-auto max-w-5xl space-y-4">
+        <DownloadRedlinedSow clauses={clauses} risks={risks} reviewerDecisions={reviewerDecisions} />
         {redlines.length === 0 ? (
           <EmptyState title="No redlines required" body="There are no AI drafting suggestions for the current findings." />
         ) : redlines.map(risk => {

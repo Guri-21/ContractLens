@@ -7,6 +7,9 @@ from app.document_workflow import validate_reviewer_upload_type
 from pydantic import BaseModel
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 ADMIN_UPLOAD_DOCUMENT_TYPE = "MSA"
@@ -56,6 +59,39 @@ async def _validate_reviewer_assignment(db: Prisma, assigned_to_id: Optional[str
             detail="Documents can only be assigned to Legal Reviewers",
         )
 
+
+def _validate_saved_file(file_path: str, filename: str) -> int:
+    """Validate that a saved upload is non-empty and parseable. Returns file size."""
+    file_size = os.path.getsize(file_path)
+    if file_size == 0:
+        os.remove(file_path)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Uploaded file '{filename}' is empty (0 bytes). Please re-upload.",
+        )
+
+    ext = os.path.splitext(filename)[1].lower()
+    try:
+        if ext == ".pdf":
+            import pdfplumber
+            with pdfplumber.open(file_path) as pdf:
+                if len(pdf.pages) == 0:
+                    raise ValueError("PDF has zero pages")
+        elif ext in (".docx", ".doc"):
+            from docx import Document as DocxDoc
+            doc = DocxDoc(file_path)
+            if len(doc.paragraphs) == 0:
+                raise ValueError("DOCX has zero paragraphs")
+    except Exception as exc:
+        logger.warning("Upload validation failed for %s: %s", filename, exc)
+        os.remove(file_path)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Uploaded file '{filename}' could not be read as a valid {ext.upper()} document. Error: {exc}",
+        ) from exc
+
+    return file_size
+
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -68,32 +104,43 @@ async def upload_document(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
-    upload_dir = "uploads"
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.filename)
+    file_path = os.path.abspath(file_path)
+
+    await file.seek(0)
+    contents = await file.read()
     with open(file_path, "wb") as f:
-        f.write(file.file.read())
-        
+        f.write(contents)
+
+    file_size = _validate_saved_file(file_path, file.filename)
+
     doc = await db.document.create(
         data={
-            "name": file.filename, 
+            "name": file.filename,
             "document_type": document_type,
-            "status": "pending", 
-            "file_path": file_path, 
+            "status": "pending",
+            "file_path": file_path,
             "uploaded_by_id": current_user.id
         }
     )
-    
+
     await db.auditlog.create(
         data={
-            "user_id": current_user.id, 
-            "action": "UPLOAD_DOCUMENT", 
+            "user_id": current_user.id,
+            "action": "UPLOAD_DOCUMENT",
             "target_type": "Document",
             "target_id": doc.id
         }
     )
-    
-    return {"documentId": doc.id, "status": doc.status}
+
+    return {
+        "documentId": doc.id,
+        "status": doc.status,
+        "fileName": file.filename,
+        "fileSize": file_size,
+    }
 
 @router.post("/admin-upload")
 async def admin_upload_document(
@@ -108,33 +155,44 @@ async def admin_upload_document(
 
     await _validate_reviewer_assignment(db, assigned_to_id)
         
-    upload_dir = "uploads"
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.filename)
+    file_path = os.path.abspath(file_path)
+
+    await file.seek(0)
+    contents = await file.read()
     with open(file_path, "wb") as f:
-        f.write(file.file.read())
-        
+        f.write(contents)
+
+    file_size = _validate_saved_file(file_path, file.filename)
+
     doc = await db.document.create(
         data={
-            "name": file.filename, 
+            "name": file.filename,
             "document_type": ADMIN_UPLOAD_DOCUMENT_TYPE,
-            "status": "pending", 
-            "file_path": file_path, 
+            "status": "pending",
+            "file_path": file_path,
             "uploaded_by_id": current_user.id,
             "assigned_to_id": assigned_to_id
         }
     )
-    
+
     await db.auditlog.create(
         data={
-            "user_id": current_user.id, 
-            "action": "ADMIN_UPLOAD_MSA", 
+            "user_id": current_user.id,
+            "action": "ADMIN_UPLOAD_MSA",
             "target_type": "Document",
             "target_id": doc.id
         }
     )
-    
-    return {"documentId": doc.id, "status": doc.status}
+
+    return {
+        "documentId": doc.id,
+        "status": doc.status,
+        "fileName": file.filename,
+        "fileSize": file_size,
+    }
 
 class AssignRequest(BaseModel):
     assigned_to_id: Optional[str] = None
