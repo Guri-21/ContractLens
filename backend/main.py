@@ -11,6 +11,7 @@ app = FastAPI(title="ContractLens API", version="1.0.0")
 async def startup():
     if not db.is_connected():
         await db.connect()
+    await auth.ensure_seeded_access_users(db)
 
 @app.on_event("shutdown")
 async def shutdown():
