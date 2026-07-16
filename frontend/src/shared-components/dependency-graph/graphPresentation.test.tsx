@@ -156,4 +156,77 @@ describe('dependency graph presentation', () => {
       animated: false,
     });
   });
+
+  it('stacks unresolved endpoints in a dedicated column that does not intersect document lanes', () => {
+    const msaClause: ClauseDTO = {
+      ...clause,
+      id: 'msa-source',
+      documentId: 'msa-1',
+      documentName: 'Master Services Agreement',
+      documentType: 'MSA',
+      references: ['missing-exhibit', 'missing-security-schedule'],
+      overrides: [],
+    };
+    const sowClause: ClauseDTO = {
+      ...clause,
+      id: 'sow-payment',
+      documentId: 'sow-1',
+      documentName: 'Implementation Statement of Work',
+      documentType: 'SOW',
+      references: [],
+      overrides: [],
+    };
+    const presentation = buildPresentationGraph(buildGraphModel([msaClause, sowClause], []), undefined, false);
+    const clauseNodes = presentation.nodes.filter((node) => node.type === 'clause');
+    const unresolvedNodes = presentation.nodes.filter((node) => node.type === 'unresolved');
+
+    expect(unresolvedNodes).toHaveLength(2);
+    expect(unresolvedNodes[1].position.y).toBeGreaterThan(unresolvedNodes[0].position.y);
+    for (const endpoint of unresolvedNodes) {
+      for (const clauseNode of clauseNodes) {
+        expect(rectanglesIntersect(endpoint, clauseNode)).toBe(false);
+      }
+    }
+  });
+
+  it('styles lower-risk and not-evaluated evidence with their semantic token classes', () => {
+    const markup = renderToStaticMarkup(
+      <EvidenceInspector
+        clause={clause}
+        risks={[
+          { ...risk, id: 'low-risk', riskLevel: 'low', status: 'evaluated' },
+          { ...risk, id: 'medium-risk', riskLevel: 'medium', status: 'evaluated' },
+          { ...risk, id: 'not-evaluated-risk', riskLevel: 'high', status: 'not_evaluated' },
+        ]}
+        linkedClauses={[]}
+        unresolvedTargets={[]}
+        onClose={() => undefined}
+        onSelectClause={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain('border-risk-low');
+    expect(markup).toContain('border-risk-medium');
+    expect(markup).toContain('border-accent');
+    expect(markup).toContain('text-accent');
+  });
 });
+
+function rectanglesIntersect(
+  left: { position: { x: number; y: number }; style?: { width?: string | number; height?: string | number } },
+  right: { position: { x: number; y: number }; style?: { width?: string | number; height?: string | number } },
+): boolean {
+  const leftWidth = toPixels(left.style?.width);
+  const leftHeight = toPixels(left.style?.height);
+  const rightWidth = toPixels(right.style?.width);
+  const rightHeight = toPixels(right.style?.height);
+
+  return left.position.x < right.position.x + rightWidth
+    && left.position.x + leftWidth > right.position.x
+    && left.position.y < right.position.y + rightHeight
+    && left.position.y + leftHeight > right.position.y;
+}
+
+function toPixels(value: string | number | undefined): number {
+  return typeof value === 'number' ? value : Number.parseFloat(value ?? '0') || 0;
+}

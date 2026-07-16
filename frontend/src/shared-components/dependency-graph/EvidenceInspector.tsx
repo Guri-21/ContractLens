@@ -74,10 +74,11 @@ export function EvidenceInspector({ clause, risks, linkedClauses, unresolvedTarg
 
 function RiskEvidence({ risk }: { risk: RiskFindingDTO }) {
   const label = risk.status === 'not_evaluated' ? 'Not evaluated' : `${risk.riskLevel} risk`;
+  const styles = getRiskEvidenceStyles(risk);
 
   return (
-    <article className="border border-risk-critical/20 bg-risk-critical/5 p-3 text-xs">
-      <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-risk-critical">{label}</p>
+    <article className={`border p-3 text-xs ${styles.cardClass}`}>
+      <p className={`font-mono text-[10px] font-bold uppercase tracking-widest ${styles.labelClass}`}>{label}</p>
       <p className="mt-1 leading-relaxed text-legal-text">{risk.reason}</p>
       {risk.evidence.map((evidence, index) => (
         <blockquote key={`${evidence.documentName}-${index}`} className="mt-3 border-l-2 border-legal-focus pl-3 text-legal-text">
@@ -97,4 +98,19 @@ function RiskEvidence({ risk }: { risk: RiskFindingDTO }) {
       )}
     </article>
   );
+}
+
+function getRiskEvidenceStyles(risk: RiskFindingDTO): { cardClass: string; labelClass: string } {
+  if (risk.status === 'not_evaluated') {
+    return { cardClass: 'border-accent bg-white text-legal-text', labelClass: 'text-accent' };
+  }
+
+  const styles: Record<RiskFindingDTO['riskLevel'], { cardClass: string; labelClass: string }> = {
+    low: { cardClass: 'border-risk-low bg-white text-legal-text', labelClass: 'text-risk-low' },
+    medium: { cardClass: 'border-risk-medium bg-white text-legal-text', labelClass: 'text-risk-medium' },
+    high: { cardClass: 'border-risk-high bg-redline-removeBg text-legal-text', labelClass: 'text-risk-high' },
+    critical: { cardClass: 'border-risk-critical bg-redline-removeBg text-legal-text', labelClass: 'text-risk-critical' },
+  };
+
+  return styles[risk.riskLevel];
 }

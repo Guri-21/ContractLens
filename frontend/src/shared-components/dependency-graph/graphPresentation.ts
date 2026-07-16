@@ -29,6 +29,7 @@ const UNRESOLVED_NODE_WIDTH = 224;
 const UNRESOLVED_NODE_HEIGHT = 80;
 const UNRESOLVED_NODE_OFFSET = 72;
 const UNRESOLVED_NODE_GAP = 24;
+const UNRESOLVED_NODE_TOP = 32;
 
 export function buildPresentationGraph(
   graphModel: GraphModel,
@@ -66,6 +67,8 @@ function buildUnresolvedNodes(
 ): Node<UnresolvedEndpointData>[] {
   const sourceNodeByTargetId = new Map<string, (typeof graphModel.nodes)[number]>();
   const knownNodeIds = new Set(graphModel.nodes.map((node) => node.id));
+  const unresolvedColumnX = Math.max(...graphModel.lanes.map((lane) => lane.x + lane.width), 0)
+    + UNRESOLVED_NODE_OFFSET;
 
   for (const edge of graphModel.edges) {
     if (edge.data.relationship === 'unresolved' && !knownNodeIds.has(edge.target)) {
@@ -83,8 +86,8 @@ function buildUnresolvedNodes(
       id,
       type: 'unresolved',
       position: {
-        x: sourceNode.position.x + sourceNode.width + UNRESOLVED_NODE_OFFSET,
-        y: sourceNode.position.y + index * (UNRESOLVED_NODE_HEIGHT + UNRESOLVED_NODE_GAP),
+        x: unresolvedColumnX,
+        y: UNRESOLVED_NODE_TOP + index * (UNRESOLVED_NODE_HEIGHT + UNRESOLVED_NODE_GAP),
       },
       data: {
         targetId,
