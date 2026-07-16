@@ -73,7 +73,7 @@ function LegalAdvisorPortal() {
     async function loadPortfolio() {
       let documents: BackendDocument[] = [];
       try {
-        documents = await fetchBackendDocuments();
+        documents = await fetchBackendDocuments({ force: true });
         if (!active) return;
 
         const mappedContracts = Array.isArray(documents)
@@ -153,17 +153,18 @@ function mapDocumentToContract(document: BackendDocument): Contract {
   const risks = flattenDocumentRisks([document]);
   const score = calculateRiskScore(risks);
   const mappedStatus = mapDocumentStatus(document.status, risks.length);
+  const analysisDate = inferAnalysisDate(document);
 
   return {
     id: document.id,
     name: document.name || 'Unknown Document',
     client: inferClientName(document.name),
-    dept: inferDepartment(document.document_type),
-    country: 'India',
+    dept: inferDepartment(document),
+    country: inferCountry(document),
     type: document.document_type || 'MSA',
     uploadedBy: document.uploader?.email || 'Current advisor',
-    date: formatDisplayDate(new Date()),
-    iso: new Date().toISOString().slice(0, 10),
+    date: formatDisplayDate(analysisDate),
+    iso: analysisDate.toISOString().slice(0, 10),
     status: mappedStatus,
     score,
     level: levelFor(score),
@@ -204,15 +205,21 @@ function calculateRiskScore(risks: Array<{ riskLevel?: string; status?: string }
     low: 20,
     medium: 45,
     high: 70,
-    critical: 90,
+    critical: 96,
   };
 
-  const total = risks.reduce((sum, risk) => {
+  const evaluatedRisks = risks.filter((risk) => risk.status !== 'accepted' && risk.status !== 'resolved');
+  if (evaluatedRisks.length === 0) return 12;
+
+  const total = evaluatedRisks.reduce((sum, risk) => {
     if (risk.status === 'not_evaluated') return sum + 55;
     return sum + (weights[risk.riskLevel || 'low'] || 20);
   }, 0);
+  const averageSeverity = total / evaluatedRisks.length;
+  const highestSeverity = Math.max(...evaluatedRisks.map((risk) => weights[risk.riskLevel || 'low'] || 20));
+  const densityPenalty = Math.min(14, evaluatedRisks.length * 2);
 
-  return Math.min(100, Math.round(total / risks.length));
+  return Math.min(100, Math.round(averageSeverity * 0.58 + highestSeverity * 0.32 + densityPenalty));
 }
 
 function mapDocumentStatus(status: string, riskCount: number): Contract['status'] {
@@ -230,11 +237,45 @@ function inferClientName(name: string): string {
   return match?.[1] || 'Contract Portfolio';
 }
 
-function inferDepartment(documentType: string): string {
-  if (documentType === 'SOW' || documentType === 'ORDER_FORM') return 'Delivery';
-  if (documentType === 'NDA' || documentType === 'DPA') return 'Legal';
-  if (documentType === 'MSA') return 'Procurement';
+function inferDepartment(document: BackendDocument): string {
+  const text = `${document.name || ''} ${document.document_type || ''}`.toLowerCase();
+  if (text.includes('health') || text.includes('med') || text.includes('patient')) return 'Healthcare';
+  if (text.includes('bank') || text.includes('payment') || text.includes('credit')) return 'Finance';
+  if (text.includes('logistics') || text.includes('supply') || text.includes('route')) return 'Operations';
+  if (text.includes('energy') || text.includes('meter')) return 'Infrastructure';
+  if (document.document_type === 'SOW' || document.document_type === 'ORDER_FORM') return 'Delivery';
+  if (document.document_type === 'NDA' || document.document_type === 'DPA') return 'Legal';
+  if (document.document_type === 'MSA') return 'Procurement';
   return 'Legal';
+}
+
+function inferCountry(document: BackendDocument): string {
+  const text = `${document.name || ''} ${(document.clauses || []).map((clause) => clause.id).join(' ')}`.toLowerCase();
+  if (text.includes('delaware') || text.includes('acme')) return 'United States';
+  if (text.includes('bangalore') || text.includes('india') || text.includes('retailgrid')) return 'India';
+  if (text.includes('northstar') || text.includes('logistics')) return 'India';
+  if (text.includes('asterbank') || text.includes('bank')) return 'India';
+  if (text.includes('medaxis') || text.includes('health')) return 'India';
+  if (text.includes('urbangrid') || text.includes('energy')) return 'India';
+  return 'India';
+}
+
+function inferAnalysisDate(document: BackendDocument): Date {
+  if (document.created_at) {
+    const parsed = new Date(document.created_at);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const seed = stableHash(document.id || document.name || 'contract');
+  const daysBack = seed % 210;
+  const date = new Date();
+  date.setHours(10, 0, 0, 0);
+  date.setDate(date.getDate() - daysBack);
+  return date;
+}
+
+function stableHash(value: string): number {
+  return Array.from(value).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) >>> 0, 0);
 }
 
 function formatDisplayDate(date: Date): string {

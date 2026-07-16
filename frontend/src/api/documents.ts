@@ -9,6 +9,7 @@ export interface BackendDocument {
   status: string;
   uploaded_by_id?: string;
   uploader?: { id: string; email: string } | null;
+  created_at?: string;
   assigned_to_id?: string | null;
   assigned_to?: { id: string; email: string } | null;
   clauses?: Array<{

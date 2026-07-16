@@ -41,39 +41,46 @@ export default function Dashboard({
   const avg = scored.length > 0 ? Math.round(scored.reduce((a, c) => a + c.score, 0) / scored.length) : 0;
 
   // Dynamically compute aggregated data
-  const deptMap: Record<string, { count: number, totalScore: number }> = {};
-  const countryMap: Record<string, { count: number, totalScore: number }> = {};
+  const deptMap: Record<string, { count: number, scoredCount: number, totalScore: number }> = {};
+  const countryMap: Record<string, { count: number, scoredCount: number, totalScore: number }> = {};
   contracts.forEach(c => {
-    if (!deptMap[c.dept]) deptMap[c.dept] = { count: 0, totalScore: 0 };
+    if (!deptMap[c.dept]) deptMap[c.dept] = { count: 0, scoredCount: 0, totalScore: 0 };
     deptMap[c.dept].count += 1;
-    if (c.score !== null) deptMap[c.dept].totalScore += c.score;
+    if (c.score !== null) {
+      deptMap[c.dept].scoredCount += 1;
+      deptMap[c.dept].totalScore += c.score;
+    }
 
-    if (!countryMap[c.country]) countryMap[c.country] = { count: 0, totalScore: 0 };
+    if (!countryMap[c.country]) countryMap[c.country] = { count: 0, scoredCount: 0, totalScore: 0 };
     countryMap[c.country].count += 1;
-    if (c.score !== null) countryMap[c.country].totalScore += c.score;
+    if (c.score !== null) {
+      countryMap[c.country].scoredCount += 1;
+      countryMap[c.country].totalScore += c.score;
+    }
   });
 
   const deptData: DeptRecord[] = Object.keys(deptMap).map(k => ({
     label: k,
     contracts: deptMap[k].count,
-    avgRisk: deptMap[k].count > 0 && deptMap[k].totalScore > 0 ? Math.round(deptMap[k].totalScore / deptMap[k].count) : 0
+    avgRisk: deptMap[k].scoredCount > 0 ? Math.round(deptMap[k].totalScore / deptMap[k].scoredCount) : 0
   })).sort((a, b) => b.contracts - a.contracts);
 
   const countryData: CountryRecord[] = Object.keys(countryMap).map(k => ({
     label: k,
     contracts: countryMap[k].count,
-    avgRisk: countryMap[k].count > 0 && countryMap[k].totalScore > 0 ? Math.round(countryMap[k].totalScore / countryMap[k].count) : 0
+    avgRisk: countryMap[k].scoredCount > 0 ? Math.round(countryMap[k].totalScore / countryMap[k].scoredCount) : 0
   })).sort((a, b) => b.contracts - a.contracts);
 
-  const trendMap: Record<string, { count: number, totalScore: number }> = {};
+  const trendMap: Record<string, { count: number, totalScore: number, order: number }> = {};
   scored.forEach(c => {
-    const month = new Date(c.iso).toLocaleString('en-US', { month: 'short' });
-    if (!trendMap[month]) trendMap[month] = { count: 0, totalScore: 0 };
-    trendMap[month].count += 1;
-    trendMap[month].totalScore += c.score;
+    const date = new Date(c.iso);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    if (!trendMap[key]) trendMap[key] = { count: 0, totalScore: 0, order: date.getFullYear() * 12 + date.getMonth() };
+    trendMap[key].count += 1;
+    trendMap[key].totalScore += c.score;
   });
-  const trendData: TrendRecord[] = Object.keys(trendMap).map(k => ({
-    m: k,
+  const trendData: TrendRecord[] = Object.keys(trendMap).sort((a, b) => trendMap[a].order - trendMap[b].order).slice(-8).map(k => ({
+    m: new Date(`${k}-01T00:00:00`).toLocaleString('en-US', { month: 'short' }),
     v: Math.round(trendMap[k].totalScore / trendMap[k].count)
   }));
   if (trendData.length === 0) {
@@ -83,11 +90,13 @@ export default function Dashboard({
     trendData.unshift({ m: 'Prev', v: trendData[0].v });
   }
 
-  const clauseMap: Record<string, { flagged: number, critical: number }> = {};
+  const clauseMap: Record<string, { flagged: number, critical: number, severityTotal: number }> = {};
+  const severityWeights: Record<string, number> = { low: 24, medium: 48, high: 72, critical: 94 };
   normalizedRisks.forEach(r => {
     const t = r.clauseType || 'General';
-    if (!clauseMap[t]) clauseMap[t] = { flagged: 0, critical: 0 };
+    if (!clauseMap[t]) clauseMap[t] = { flagged: 0, critical: 0, severityTotal: 0 };
     clauseMap[t].flagged += 1;
+    clauseMap[t].severityTotal += severityWeights[r.riskLevel] || severityWeights.low;
     if (r.riskLevel === 'critical') clauseMap[t].critical += 1;
   });
   const clauseData: ClauseRecord[] = Object.keys(clauseMap).map(k => ({
@@ -99,7 +108,7 @@ export default function Dashboard({
   const clauseTypeRisk: ClauseTypeRiskRecord[] = Object.keys(clauseMap).map(k => {
     return {
       label: k,
-      avgRisk: clauseMap[k].critical > 0 ? 80 : 40
+      avgRisk: Math.round(clauseMap[k].severityTotal / Math.max(1, clauseMap[k].flagged))
     };
   }).sort((a, b) => b.avgRisk - a.avgRisk);
 
@@ -138,7 +147,12 @@ export default function Dashboard({
 
   // Trend SVG line & area computations
   const n = trendData.length;
-  const vmin = 44, vmax = 66, w = 680, h = 220, pl = 44, pr = 16, pt = 16, pb = 30;
+  const trendValues = trendData.map((d) => d.v);
+  const rawMin = Math.min(...trendValues);
+  const rawMax = Math.max(...trendValues);
+  const vmin = Math.max(0, Math.floor((rawMin - 8) / 5) * 5);
+  const vmax = Math.min(100, Math.ceil((rawMax + 8) / 5) * 5);
+  const w = 680, h = 220, pl = 44, pr = 16, pt = 16, pb = 30;
   const px = (i: number) => pl + (i * (w - pl - pr)) / (n - 1);
   const py = (val: number) => pt + ((vmax - val) / (vmax - vmin)) * (h - pt - pb);
   const linePts = trendData.map((d, i) => `${px(i).toFixed(1)},${py(d.v).toFixed(1)}`).join(' ');
@@ -148,7 +162,10 @@ export default function Dashboard({
     trendData.map((d, i) => `L ${px(i).toFixed(1)},${py(d.v).toFixed(1)}`).join(' ') +
     ` L ${px(n - 1).toFixed(1)},${baseY} Z`;
   const trendDots = trendData.map((d, i) => ({ cx: px(i).toFixed(1), cy: py(d.v).toFixed(1), label: d.m }));
-  const trendGrid = [45, 50, 55, 60, 65].map((val) => ({ y: py(val).toFixed(1), ty: (py(val) + 4).toFixed(1), val }));
+  const gridStep = Math.max(5, Math.ceil((vmax - vmin) / 4 / 5) * 5);
+  const trendGrid = Array.from({ length: 5 }, (_, idx) => vmin + idx * gridStep)
+    .filter((val) => val <= vmax)
+    .map((val) => ({ y: py(val).toFixed(1), ty: (py(val) + 4).toFixed(1), val }));
 
   // KPI metadata lists
   const kpis = [

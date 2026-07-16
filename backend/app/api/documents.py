@@ -263,6 +263,7 @@ async def list_documents(db: Prisma = Depends(get_db), current_user = Depends(ge
                     "risks": True
                 }
             },
+            "uploader": True,
             "assigned_to": True
         }
     )
