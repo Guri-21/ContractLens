@@ -200,25 +200,25 @@ export default function Dashboard({
       };
     });
 
-  const packageMap: Record<string, { label: string; docs: number; total: number; max: number; levels: string[] }> = {};
+  const packageMap: Record<string, { label: string; docs: number; exposure: number; highDocs: number; maxScore: number; level: 'low' | 'medium' | 'high' | 'critical' }> = {};
   scored.forEach((contract) => {
     const label = contract.client || contract.name.replace(/\.[^.]+$/, '');
     if (!packageMap[label]) {
-      packageMap[label] = { label, docs: 0, total: 0, max: 0, levels: [] };
+      packageMap[label] = { label, docs: 0, exposure: 0, highDocs: 0, maxScore: 0, level: 'low' };
     }
+    const highRiskDoc = contract.level === 'high' || contract.level === 'critical';
     packageMap[label].docs += 1;
-    packageMap[label].total += contract.score;
-    packageMap[label].max = Math.max(packageMap[label].max, contract.score);
-    packageMap[label].levels.push(contract.level || 'low');
+    packageMap[label].exposure += highRiskDoc ? 2 : contract.level === 'medium' ? 1 : 0;
+    packageMap[label].highDocs += highRiskDoc ? 1 : 0;
+    packageMap[label].maxScore = Math.max(packageMap[label].maxScore, contract.score);
+    packageMap[label].level = levelFor(packageMap[label].maxScore) || 'low';
   });
   const packageRisks = Object.values(packageMap)
     .map((item) => ({
       ...item,
-      avg: Math.round(item.total / Math.max(1, item.docs)),
-      level: levelFor(item.max) || 'low',
-      widthPercent: `${Math.max(8, item.max)}%`,
+      widthPercent: `${Math.max(8, Math.min(100, item.exposure * 24))}%`,
     }))
-    .sort((a, b) => b.max - a.max)
+    .sort((a, b) => b.exposure - a.exposure || b.maxScore - a.maxScore)
     .slice(0, 8);
 
   // Risk Analytics Breakdown Tabs
@@ -337,7 +337,7 @@ export default function Dashboard({
             {/* Contract Package Risk Card */}
             <div className="bg-white border border-[#E2E8F0] rounded p-5 px-5.5">
               <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-4">
-                Risk by contract package
+                Risk exposure by contract package
               </div>
               <div className="flex flex-col gap-3">
                 {packageRisks.map((pkg) => {
@@ -346,7 +346,7 @@ export default function Dashboard({
                     <div key={pkg.label} className="grid grid-cols-[150px_1fr_82px] items-center gap-3">
                       <div className="min-w-0">
                         <div className="text-[13px] font-semibold text-[#0F172A] truncate">{pkg.label}</div>
-                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - avg {pkg.avg}</div>
+                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - {pkg.highDocs} high-risk docs</div>
                       </div>
                       <div className="h-7 bg-[#F8FAFC] border border-[#EEF2F7] rounded-sm overflow-hidden">
                         <div
@@ -355,8 +355,8 @@ export default function Dashboard({
                         ></div>
                       </div>
                       <div className="text-right">
-                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.max}</div>
-                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>{meta.label}</div>
+                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.exposure}</div>
+                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>Exposure</div>
                       </div>
                     </div>
                   );
@@ -449,7 +449,7 @@ export default function Dashboard({
             {/* Contract Package Risk Card */}
             <div className="bg-white border border-[#E2E8F0] rounded p-5 px-5.5">
               <div className="font-mono text-[11px] tracking-[0.1em] text-[#64748B] uppercase mb-4">
-                Risk by contract package
+                Risk exposure by contract package
               </div>
               <div className="flex flex-col gap-3">
                 {packageRisks.map((pkg) => {
@@ -458,7 +458,7 @@ export default function Dashboard({
                     <div key={pkg.label} className="grid grid-cols-[150px_1fr_82px] items-center gap-3">
                       <div className="min-w-0">
                         <div className="text-[13px] font-semibold text-[#0F172A] truncate">{pkg.label}</div>
-                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - avg {pkg.avg}</div>
+                        <div className="text-[10.5px] text-[#94A3B8] font-mono">{pkg.docs} docs - {pkg.highDocs} high-risk docs</div>
                       </div>
                       <div className="h-7 bg-[#F8FAFC] border border-[#EEF2F7] rounded-sm overflow-hidden">
                         <div
@@ -467,8 +467,8 @@ export default function Dashboard({
                         ></div>
                       </div>
                       <div className="text-right">
-                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.max}</div>
-                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>{meta.label}</div>
+                        <div className="font-serif text-[26px] leading-none" style={{ color: meta.text }}>{pkg.exposure}</div>
+                        <div className="font-mono text-[9.5px] uppercase tracking-wider" style={{ color: meta.text }}>Exposure</div>
                       </div>
                     </div>
                   );
