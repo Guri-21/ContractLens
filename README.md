@@ -4,6 +4,24 @@ AI contract review, governed by evidence.
 
 ContractLens is an enterprise Contract and SOW Risk Analyzer built for the Tech Mahindra CODE Hackathon. It compares Statements of Work and other legal documents against an admin-published governing MSA, detects legal and commercial risk, preserves source evidence, produces redline suggestions, and refuses to evaluate missing referenced documents instead of guessing.
 
+## Branch Status
+
+The latest working prototype is available on both `main` and `production`.
+
+`main` has been overwritten to match `production`, so both branches currently contain the same full ContractLens prototype, including backend, frontend, pipeline, saved-analysis flow, seeded users, admin workspace, legal advisor workspace, analytics, and README.
+
+Use either branch for demos:
+
+```powershell
+git checkout main
+git pull origin main
+
+# or
+git checkout production
+git pull origin production
+```
+
+
 ## Demo Video
 
 Project walkthrough video:
@@ -244,8 +262,10 @@ npm test -- --run
 
 ## Team Workflow
 
-- `production` is the current integration branch and demo branch.
-- Feature branches should merge into `production`, not directly into `main`.
+- `main` and `production` currently contain the same complete working prototype.
+- Use `main` for final submission visibility.
+- Use `production` as the integration/demo branch if the team wants a separate staging branch again.
+- Feature branches should be merged carefully into `production` first, tested, and then copied or merged into `main`.
 - Keep `.env`, local server logs, `.codegraph/`, generated caches, and local uploads out of commits.
 - If frontend and backend behavior disagree, treat backend persisted analysis data as the source of truth and fix the derived UI calculation.
 
