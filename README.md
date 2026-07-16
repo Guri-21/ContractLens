@@ -99,8 +99,7 @@ compliance@contractlens.com (Analytics Dashboard)
 
 📸Video Demo of the Project
 
-Built with ❤️ by Team 6
-Team members:
+Built by Team 6:
 - Gurnoor Partap Singh Bhogal
 - Himani Agarwal
 - Vinayak Koli
