@@ -1,7 +1,7 @@
 const statusItems = [
-  { label: 'No risk', className: 'border-redline-add bg-redline-addBg' },
-  { label: 'Risk', className: 'border-risk-high bg-redline-removeBg' },
-  { label: 'Not evaluated', className: 'border-accent bg-white' },
+  { label: 'No risk', className: 'border-green-400 bg-green-50' },
+  { label: 'Risk', className: 'border-red-300 bg-red-50' },
+  { label: 'Not evaluated', className: 'border-amber-300 bg-amber-50' },
 ];
 
 const relationshipItems = [

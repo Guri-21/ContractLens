@@ -4,7 +4,7 @@ Labels each clause's type: payment, liability, IP, SLA, and similar.
 """
 
 from .config import PIPELINE_CONFIG
-from .llm_client import complete_json
+from .llm_client import complete_json, complete_json_batch
 
 _CLAUSE_TYPES = [
     "payment",
@@ -65,34 +65,57 @@ def _classify_hf(clauses: list[dict], cfg: dict) -> list[dict]:
     return results
 
 
-def _classify_llm(clauses: list[dict]) -> list[dict]:
-    results = []
-    valid_types = ", ".join(_CLAUSE_TYPES)
-    classify_other_with_llm = PIPELINE_CONFIG.get("classify_other_with_llm", False)
-    for clause in clauses:
-        keyword_type = _classify_by_keywords(clause)
-        if keyword_type != "other":
-            results.append({**clause, "clauseType": keyword_type})
-            continue
-        if not classify_other_with_llm:
-            results.append({**clause, "clauseType": "other"})
-            continue
+_BATCH_CLASSIFY_TEMPLATE = """You are a legal contract analysis engine.
+Classify each clause below into exactly one type from this list:
+{VALID_TYPES}
 
-        prompt = f"""Classify this legal clause into exactly one type.
-Return ONLY a JSON object: {{"clauseType": "<type>"}}
+Input is a JSON array of objects with "id" and "text" fields.
+Return ONLY a JSON object: {{"results": [{{"id": "<id>", "clauseType": "<type>"}}, ...]}}
+One entry per input clause, same order, no extra fields.
 
-Valid types: {valid_types}
-
-Clause text:
-\"\"\"{clause["text"][:800]}\"\"\"
+Clauses:
+{ITEMS}
 """
-        try:
-            data = complete_json(prompt, max_tokens=64)
-            clause_type = _normalise_label(str(data.get("clauseType", "other")))
-        except Exception:
-            clause_type = "other"
-        results.append({**clause, "clauseType": clause_type})
-    return results
+
+
+def _classify_llm(clauses: list[dict]) -> list[dict]:
+    classify_other_with_llm = PIPELINE_CONFIG.get("classify_other_with_llm", False)
+    valid_types = ", ".join(_CLAUSE_TYPES)
+
+    # First pass: keyword-based (free, instant)
+    keyword_classified: list[dict] = []
+    needs_llm: list[dict] = []
+    for clause in clauses:
+        kw = _classify_by_keywords(clause)
+        if kw != "other":
+            keyword_classified.append({**clause, "clauseType": kw})
+        else:
+            needs_llm.append(clause)
+
+    if not needs_llm or not classify_other_with_llm:
+        return keyword_classified + [{**c, "clauseType": "other"} for c in needs_llm]
+
+    # Second pass: single batch LLM call for all unresolved clauses
+    batch_items = [{"id": c["id"], "text": c["text"][:600]} for c in needs_llm]
+    template = _BATCH_CLASSIFY_TEMPLATE.replace("{VALID_TYPES}", valid_types)
+    batch_results = complete_json_batch(batch_items, template, result_key="results", max_tokens=1024)
+
+    # Build lookup from batch output
+    type_by_id: dict[str, str] = {}
+    for entry in batch_results:
+        if isinstance(entry, dict) and "id" in entry:
+            type_by_id[entry["id"]] = _normalise_label(str(entry.get("clauseType", "other")))
+
+    llm_classified = [
+        {**c, "clauseType": type_by_id.get(c["id"], "other")}
+        for c in needs_llm
+    ]
+
+    # Merge preserving original order
+    order = {c["id"]: i for i, c in enumerate(clauses)}
+    all_classified = keyword_classified + llm_classified
+    all_classified.sort(key=lambda c: order.get(c["id"], 9999))
+    return all_classified
 
 
 def _classify_by_keywords(clause: dict) -> str:

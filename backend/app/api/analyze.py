@@ -185,6 +185,9 @@ def _finding_db_payload(finding: dict) -> dict:
         "status": finding["status"],
         "reason": finding["reason"],
         "playbook_rule_violated": finding.get("playbookRuleViolated"),
+        "contradiction_type": finding.get("contradictionType"),
+        "confidence": finding.get("confidence"),
+        "comparison_text": finding.get("comparisonText"),
         "evidence": Json(finding.get("evidence", [])),
         "missing_documents": Json(finding.get("missingDocuments", [])),
     }

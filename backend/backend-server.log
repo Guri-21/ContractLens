@@ -1,0 +1,552 @@
+INFO:     127.0.0.1:60727 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60727 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62021 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62021 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63142 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65115 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50451 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55359 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63721 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64992 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60937 - "GET /api/users/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60937 - "OPTIONS /api/audit/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60937 - "GET /api/audit/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60937 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60937 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62962 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51683 - "OPTIONS /api/users/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62962 - "GET{"timestamp":"2026-07-15T23:27:16.185243Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+0.0.1:62962 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61498 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52456 - "GET /api/users/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61498 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57940 - "OPTIONS /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57940 - "GET /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57940 - "GET /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58200 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58200 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52920 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52920 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58129 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58129 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-15T23:27:16.183506Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+{"timestamp":"2026-07-15T23:27:16.193515Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:62046 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62046 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62046 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62046 - "GET /api/documents/ HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49706 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49706 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49706 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49829 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55012 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55012 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55012 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52955 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52955 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52955 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T00:10:18.178213Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:57017 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57017 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57017 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57017 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57017 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57017 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T00:23:16.767367Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:62535 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62535 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62535 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62535 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49644 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49644 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49644 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:49644 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64992 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64992 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64992 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64992 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61157 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61157 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61157 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61157 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61157 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61157 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61157 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61157 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62145 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62145 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62145 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62145 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58378 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58378 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58378 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58378 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65297 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65297 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65297 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65297 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60333 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60333 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60333 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60333 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60333 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60333 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60333 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60333 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51259 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51259 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51259 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51259 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51259 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51259 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51259 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51259 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58286 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58286 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58286 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58286 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58286 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58286 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58286 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58286 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62073 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62073 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62073 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65192 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64104 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64104 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64104 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64104 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65260 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65260 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65260 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65260 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65260 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65260 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65260 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65260 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56764 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56764 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:56764 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56764 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56764 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56764 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56764 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56764 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57614 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57614 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57614 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54150 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60441 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60441 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60441 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60441 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59892 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59892 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59892 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59892 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65479 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65479 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65479 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65479 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65479 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65479 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65479 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65479 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55534 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55534 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55534 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55534 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55534 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55534 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55534 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55534 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57712 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57712 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57712 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57712 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62501 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62501 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62501 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62501 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64999 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64999 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64999 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64999 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54191 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54191 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54191 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54191 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59923 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59923 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59923 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59923 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59923 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59923 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59923 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59923 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52269 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52269 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52269 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:56199 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53908 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51978 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53908 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51978 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53908 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51978 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53908 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51978 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52042 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52042 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52042 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52042 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57373 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57373 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57373 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57373 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57373 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57373 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57373 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57373 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50612 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50612 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50612 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50612 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50612 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50612 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50612 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50612 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52859 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52859 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50409 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52859 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:53115 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50409 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:50409 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55812 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57486 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54117 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54117 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54117 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54117 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57486 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57486 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57486 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60004 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60004 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60004 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60004 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60004 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60004 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60004 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60004 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54525 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54525 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54525 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54525 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54525 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54525 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54525 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54525 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57331 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57331 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57331 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57331 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61857 - "GET /api/auth/demo-users HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:64997 - "GET /api/auth/demo-users HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:51355 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51364 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50830 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62489 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62489 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "POST /api/auth/token HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55721 - "POST /api/auth/token HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:59016 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59016 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59016 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T01:13:16.658426Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:61455 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61455 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61455 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61455 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61455 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61455 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64992 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64992 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64992 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55343 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55343 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55138 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55138 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62935 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62935 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62935 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62935 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50060 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64240 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64240 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56830 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56830 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:56830 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56830 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51669 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51669 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53112 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53112 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53112 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61347 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61347 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61347 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T01:33:46.990885Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+{"timestamp":"2026-07-16T01:33:46.991419Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:51131 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51131 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51131 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49515 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49515 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49515 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61419 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61419 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61419 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T01:47:17.095561Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:59508 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59508 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57832 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57832 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "OPTIONS /api/users/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57832 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57832 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50886 - "GET /api/users/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57832 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60989 - "OPTIONS /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60989 - "GET /api/admin/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62552 - "OPTIONS /api/admin/advisors/d217a91d-5355-45e5-9060-2bedf4e893e1/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62552 - "GET /api/admin/advisors/d217a91d-5355-45e5-9060-2bedf4e893e1/analytics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54647 - "OPTIONS /api/audit/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54647 - "GET /api/audit/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54539 - "OPTIONS /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54539 - "GET /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54539 - "GET /api/settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65219 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65219 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51094 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51094 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64993 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64993 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64993 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64993 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64993 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62539 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63250 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:63250 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63250 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54213 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54213 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54213 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54213 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54213 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57693 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57693 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57693 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57693 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+{"timestamp":"2026-07-16T04:23:32.075659Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+{"timestamp":"2026-07-16T04:23:32.075658Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:62651 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62651 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62651 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58586 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54319 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54319 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54319 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54319 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55963 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55963 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55963 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55963 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55963 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55836 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54225 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54225 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54225 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54225 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54225 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55382 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51501 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51501 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51501 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58213 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51501 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:58213 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57007 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:57007 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57007 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54063 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54063 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50714 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60609 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60609 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56655 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56655 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51935 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51946 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64995 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T04:45:17.092748Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+{"timestamp":"2026-07-16T04:45:17.127083Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:63998 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:63998 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63998 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60416 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60416 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60416 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60082 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:60082 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60082 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52538 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52538 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52538 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52538 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52538 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52538 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56521 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56521 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56521 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56521 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56521 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50852 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:50852 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50852 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61492 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52799 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52799 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52799 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49793 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49793 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49793 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63837 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:63837 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63837 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56770 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:56770 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56770 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63712 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:63712 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63712 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59509 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59509 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59509 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59509 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59509 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59509 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53871 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:53871 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53871 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65006 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65006 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65006 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58955 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:58955 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58955 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62512 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62512 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62512 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60749 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60749 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62308 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62308 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62679 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63100 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63100 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53707 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53707 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64992 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64992 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+{"timestamp":"2026-07-16T05:22:01.744156Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:50501 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50501 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54703 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54703 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64995 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64995 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57054 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57054 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59410 - "GET /api/auth/available-users HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59417 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59418 - "GET /api/auth/demo-users HTTP/1.1" 200 OK
+{"timestamp":"2026-07-16T07:26:21.545619Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Io, cause: Some(Os { code: 10054, kind: ConnectionReset, message: \"An existing connection was forcibly closed by the remote host.\" }) }"},"target":"quaint::connector::postgres::native"}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, FileText, GitPullRequest, LayoutDashboard, List, MessageSquare, Network, ShieldCheck } from 'lucide-react';
 import { UploadFlow } from './components/UploadFlow';
 import { ClauseViewer } from './components/ClauseViewer';
 import { AiLegalAssistant } from './components/AiLegalAssistant';
@@ -22,14 +22,14 @@ import { DownloadRedlinedSow } from './components/DownloadRedlinedSow';
 
 type AnalysisTab = 'overview' | 'clauses' | 'risks' | 'graph' | 'redlines' | 'advice' | 'audit';
 
-const TABS: Array<{ id: AnalysisTab; label: string }> = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'clauses', label: 'Clauses' },
-  { id: 'risks', label: 'Risks' },
-  { id: 'graph', label: 'Dependency Graph' },
-  { id: 'redlines', label: 'Redlines' },
-  { id: 'advice', label: 'Legal Advice' },
-  { id: 'audit', label: 'Audit & Export' },
+const TABS: Array<{ id: AnalysisTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'clauses', label: 'Clauses', icon: List },
+  { id: 'risks', label: 'Risks', icon: AlertTriangle },
+  { id: 'graph', label: 'Graph', icon: Network },
+  { id: 'redlines', label: 'Redlines', icon: GitPullRequest },
+  { id: 'advice', label: 'Legal Advice', icon: MessageSquare },
+  { id: 'audit', label: 'Audit & Export', icon: ClipboardList },
 ];
 
 interface ReviewerWorkspaceProps {
@@ -95,20 +95,29 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
             <NotificationCenter />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`border px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-legal-focus bg-legal-focus text-white'
-                    : 'border-legal-border bg-legal-surface text-legal-meta hover:border-legal-focus hover:text-legal-text'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-1.5 border px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-legal-focus bg-legal-focus text-white'
+                      : 'border-legal-border bg-legal-surface text-legal-meta hover:border-legal-focus hover:text-legal-text'
+                  }`}
+                >
+                  <Icon className="h-3 w-3 shrink-0" />
+                  {tab.label}
+                  {tab.id === 'risks' && highRiskCount > 0 && (
+                    <span className="ml-0.5 rounded-full bg-red-500 px-1.5 py-0.5 font-mono text-[9px] font-bold leading-none text-white">
+                      {highRiskCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </header>
 

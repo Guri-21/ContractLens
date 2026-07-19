@@ -113,9 +113,15 @@ export function buildAnalysisFromDocuments(documents: PersistedDocument[], focus
   const focus = focusDocumentId
     ? analyzedDocuments.find(document => document.id === focusDocumentId)
     : analyzedDocuments[0];
-  const selectedDocuments = focus
-    ? analyzedDocuments.filter(document => document.id === focus.id || document.document_type === 'MSA')
-    : analyzedDocuments;
+
+  let selectedDocuments: PersistedDocument[];
+  if (focus) {
+    const msaCandidates = analyzedDocuments.filter(d => d.id !== focus.id && d.document_type === 'MSA');
+    const pairedMsa = _findPairedMsa(focus, msaCandidates);
+    selectedDocuments = pairedMsa ? [focus, pairedMsa] : [focus];
+  } else {
+    selectedDocuments = analyzedDocuments;
+  }
 
   const clauses = selectedDocuments.flatMap(document =>
     (document.clauses || []).map(clause => normalizeClause(clause, document)),
@@ -127,6 +133,21 @@ export function buildAnalysisFromDocuments(documents: PersistedDocument[], focus
   );
 
   return { clauses, risks, focusDocument: focus, analyzedDocuments };
+}
+
+function _findPairedMsa(focus: PersistedDocument, msaDocuments: PersistedDocument[]): PersistedDocument | undefined {
+  if (msaDocuments.length === 0) return undefined;
+  if (msaDocuments.length === 1) return msaDocuments[0];
+  const focusRefs = new Set(
+    (focus.clauses || []).flatMap(c => [...(c.references || []), ...(c.overrides || [])]),
+  );
+  let best = msaDocuments[0];
+  let bestScore = 0;
+  for (const msa of msaDocuments) {
+    const score = (msa.clauses || []).filter(c => focusRefs.has(c.id)).length;
+    if (score > bestScore) { bestScore = score; best = msa; }
+  }
+  return best;
 }
 
 function normalizeClause(clause: PersistedClause, document: PersistedDocument): ClauseDTO {

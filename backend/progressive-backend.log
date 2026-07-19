@@ -1,0 +1,30 @@
+INFO:     127.0.0.1:58778 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52770 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52770 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52770 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52770 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62349 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62349 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54212 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51347 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54661 - "OPTIONS /api/documents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65016 - "OPTIONS /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54212 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54212 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65016 - "OPTIONS /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65016 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:65016 - "GET /api/documents/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51347 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51347 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65016 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65016 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65016 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51347 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61634 - "GET /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /api/documents HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52878 - "GET /api/documents/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /api/analyze HTTP/1.1" 200 OK
+{"timestamp":"2026-07-15T16:50:02.009114Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+{"timestamp":"2026-07-15T16:50:02.057261Z","level":"ERROR","fields":{"message":"Error in PostgreSQL connection: Error { kind: Closed, cause: None }"},"target":"quaint::connector::postgres::native"}
+INFO:     127.0.0.1:63213 - "GET /health HTTP/1.1" 404 Not Found

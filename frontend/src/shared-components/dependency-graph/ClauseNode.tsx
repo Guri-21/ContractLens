@@ -14,9 +14,9 @@ const statusLabels = {
 } as const;
 
 const statusClasses = {
-  safe: 'border-redline-add bg-redline-addBg text-legal-text',
-  risk: 'border-risk-high bg-redline-removeBg text-legal-text',
-  not_evaluated: 'border-accent bg-white text-legal-text',
+  safe: 'border-green-400 bg-green-50 text-green-900',
+  risk: 'border-red-300 bg-red-50 text-red-900',
+  not_evaluated: 'border-amber-300 bg-amber-50 text-legal-text',
 } as const;
 
 const riskClasses = {

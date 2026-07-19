@@ -14,6 +14,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 ADMIN_UPLOAD_DOCUMENT_TYPE = "MSA"
 
+def _parse_json_field(value, fallback):
+    """Parse Prisma Json fields that may be returned as raw strings."""
+    if value is None:
+        return fallback
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return fallback
+    return fallback
+
+
 def _serialize_document(document) -> dict:
     data = document.model_dump()
     assigned_to = data.get("assigned_to")
@@ -22,6 +36,15 @@ def _serialize_document(document) -> dict:
             "id": assigned_to.get("id"),
             "email": assigned_to.get("email"),
         }
+    # Parse JSON fields on clauses and their risks so the frontend gets real objects
+    for clause in data.get("clauses") or []:
+        clause["references"] = _parse_json_field(clause.get("references"), [])
+        clause["overrides"] = _parse_json_field(clause.get("overrides"), [])
+        clause["table_data"] = _parse_json_field(clause.get("table_data"), None)
+        for risk in clause.get("risks") or []:
+            risk["evidence"] = _parse_json_field(risk.get("evidence"), [])
+            risk["missing_documents"] = _parse_json_field(risk.get("missing_documents"), [])
+            risk["redline"] = _parse_json_field(risk.get("redline"), None)
     return data
 
 

@@ -14,15 +14,23 @@ from copy import deepcopy
 # inside ordinary sentences are not treated as clauses.
 _SECTION_CANDIDATE_RE = re.compile(
     r"(?P<section>"
-    r"(?:Section|Article|Clause)\s+[A-Za-z0-9IVXLC.]+|"
-    r"\d{1,2}(?:\.\d{1,2})+(?:\([a-z]\))?|"
-    r"\d{1,2}\([a-z]\)|"
-    r"\d{1,2}"
+    r"(?:Section|Article|Clause|Schedule|Exhibit|Appendix|Annex)\s+[A-Za-z0-9IVXLC.]+|"  # named sections + exhibits
+    r"[IVXLC]{1,6}(?:\.[IVXLC0-9]{1,4})*(?=\.\s+[A-Z])|"  # Roman numerals: IV. TERM
+    r"\d{1,2}(?:\.\d{1,2})+(?:\([a-z]\))?|"                # 2.1, 3.1(a)
+    r"\d{1,2}\([a-z]\)|"                                    # 1(a)
+    r"\([a-z]{1,3}\)|"                                      # (a), (b), (iii) sub-clauses
+    r"\d{1,2}"                                              # bare digits
     r")"
     r"[.)]?\s+"
     r"(?=[A-Z])",
     re.IGNORECASE,
 )
+
+# ALL-CAPS header pattern: a line that is entirely uppercase words (2-6 words), used as a section boundary
+_ALL_CAPS_HEADER_RE = re.compile(
+    r"(?m)^(?P<section>[A-Z][A-Z\s\-&/]{4,60}[A-Z])(?:\s*\n)",
+)
+
 _CITATION_WORDS = {"usc", "u.s.c", "cfr", "ccr", "usca", "uscs", "fed", "usd", "gbp"}
 _TITLE_MAX_CHARS = 100
 
@@ -146,13 +154,26 @@ def _fallback_segment(text: str, pages: list[dict]) -> dict:
 
 
 def _find_section_markers(text: str) -> list[dict]:
-    markers = []
+    raw: list[dict] = []
+
     for match in _SECTION_CANDIDATE_RE.finditer(text):
         section = _normalise_section(match.group("section"))
         marker = {"section": section, "start": match.start(), "end": match.end()}
-        if _is_valid_section_marker(text, marker, markers[-1] if markers else None):
-            markers.append(marker)
-    return _dedupe_nested_markers(markers)
+        last = raw[-1] if raw else None
+        if _is_valid_section_marker(text, marker, last):
+            raw.append(marker)
+
+    # ALL-CAPS headers (e.g. "CONFIDENTIALITY\n", "TERM AND TERMINATION\n")
+    # treated as implicit section boundaries if not already captured above.
+    covered_starts = {m["start"] for m in raw}
+    for match in _ALL_CAPS_HEADER_RE.finditer(text):
+        if match.start() not in covered_starts:
+            section = match.group("section").strip()
+            raw.append({"section": section, "start": match.start(), "end": match.end()})
+
+    # Sort by position then dedupe
+    raw.sort(key=lambda m: m["start"])
+    return _dedupe_nested_markers(raw)
 
 
 def _is_valid_section_marker(text: str, marker: dict, previous_marker: dict | None) -> bool:

@@ -30,6 +30,35 @@ def _load_dotenv_once() -> None:
     _ENV_LOADED = True
 
 
+def complete_json_batch(
+    items: list[dict],
+    prompt_template: str,
+    result_key: str = "results",
+    max_tokens: int | None = None,
+) -> list[dict]:
+    """Process multiple items in a single LLM call to reduce API round-trips.
+
+    prompt_template must contain the literal string {ITEMS} which is replaced
+    with a JSON array of the items. The LLM must return a JSON object with
+    `result_key` containing a list of results in the same order as the input.
+
+    Falls back to processing items one-by-one if the batch call fails.
+    """
+    if not items:
+        return []
+    items_json = json.dumps(items, ensure_ascii=False)
+    prompt = prompt_template.replace("{ITEMS}", items_json)
+    try:
+        data = complete_json(prompt, max_tokens or 4096)
+        results = data.get(result_key, [])
+        if isinstance(results, list) and len(results) == len(items):
+            return results
+    except Exception:
+        pass
+    # Fallback: individual calls (original behaviour)
+    return []
+
+
 def complete_text(prompt: str, max_tokens: int | None = None) -> str:
     provider = PIPELINE_CONFIG["llm_provider"].lower()
     if provider == "claude":

@@ -42,13 +42,16 @@ def run_analysis_pipeline(
     uploaded_names = [d["name"] for d in documents]
     all_clauses: list[dict] = []
 
-    # ── Steps 1-4: parse + segment + classify + references ──────
+    # ── Steps 1-3: parse + segment + classify (per document) ────
     for doc in documents:
         pages = parse_document(doc["file_path"])
         clauses = segment_clauses(pages, doc["id"], doc["name"], doc["type"])
         clauses = classify_clauses(clauses)
-        clauses = extract_references(clauses)
         all_clauses.extend(clauses)
+
+    # ── Step 4: reference extraction across ALL documents ────────
+    # Must run after all docs so SOW→MSA section refs can resolve to real clause IDs
+    all_clauses = extract_references(all_clauses)
 
     # ── Step 5: cross-document contradiction detection ───────────
     refusal_findings = apply_refusal(all_clauses, uploaded_names)
