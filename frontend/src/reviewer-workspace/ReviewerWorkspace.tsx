@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ErrorBoundary } from '../shared-components/ErrorBoundary';
 import { AlertTriangle, CheckCircle2, ClipboardList, FileText, GitPullRequest, LayoutDashboard, List, MessageSquare, Network, ShieldCheck } from 'lucide-react';
 import { UploadFlow } from './components/UploadFlow';
 import { ClauseViewer } from './components/ClauseViewer';
@@ -122,6 +123,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">
+          <ErrorBoundary key={activeTab} fallbackTitle="This tab encountered an error">
           {activeTab === 'overview' && (
             <OverviewTab
               clauses={clauses}
@@ -165,6 +167,7 @@ export const ReviewerWorkspace: React.FC<ReviewerWorkspaceProps> = ({
               </div>
             </div>
           )}
+          </ErrorBoundary>
         </main>
       </div>
 

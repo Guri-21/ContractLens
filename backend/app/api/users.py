@@ -1,9 +1,17 @@
+import secrets
+import string
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.core.security import get_password_hash
 from prisma import Prisma
 from app.database import get_db
 from app.api.deps import require_role
+
+
+def _generate_temp_password() -> str:
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(16))
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -29,10 +37,11 @@ async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), curr
     if not role:
         raise HTTPException(status_code=500, detail="Role 'Legal Reviewer' not found")
         
+    temp_password = _generate_temp_password()
     user = await db.user.create(
         data={
             "email": request.email,
-            "hashed_password": get_password_hash("abc123"),
+            "hashed_password": get_password_hash(temp_password),
             "role_id": role.id
         }
     )
@@ -46,7 +55,7 @@ async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), curr
         }
     )
 
-    return {"id": user.id, "email": user.email, "role": "Legal Reviewer"}
+    return {"id": user.id, "email": user.email, "role": "Legal Reviewer", "temporaryPassword": temp_password}
 
 @router.delete("/{user_id}")
 async def delete_advisor(user_id: str, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin"]))):

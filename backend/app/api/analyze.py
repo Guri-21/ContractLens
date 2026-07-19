@@ -1,8 +1,12 @@
+import asyncio
 import json
+import logging
 from typing import List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
+
+_logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 from prisma import Json, Prisma
 
@@ -89,9 +93,38 @@ async def analyze_documents(
         }
     )
 
+    # Phase 1: run the pipeline (with timeout)
     try:
-        result = await run_in_threadpool(run_analysis_pipeline, doc_dicts, playbook_rules, req.countryCode)
+        result = await asyncio.wait_for(
+            run_in_threadpool(run_analysis_pipeline, doc_dicts, playbook_rules, req.countryCode),
+            timeout=300.0,
+        )
+    except asyncio.TimeoutError as exc:
+        await db.auditlog.create(
+            data={
+                "user_id": current_user.id,
+                "action": "ANALYSIS_TIMEOUT",
+                "target_type": "AnalysisPackage",
+                "target_id": analysis_target_id,
+            }
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="Analysis timed out after 5 minutes. Try with fewer documents.",
+        ) from exc
+    except Exception:
+        await db.auditlog.create(
+            data={
+                "user_id": current_user.id,
+                "action": "ANALYSIS_FAILED",
+                "target_type": "AnalysisPackage",
+                "target_id": analysis_target_id,
+            }
+        )
+        raise
 
+    # Phase 2: persist results — roll back partial writes on failure
+    try:
         for doc in doc_dicts:
             await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": doc["id"]}}})
             await db.clause.delete_many(where={"document_id": doc["id"]})
@@ -114,16 +147,27 @@ async def analyze_documents(
             }
         )
         return _api_result(result)
-    except Exception:
+    except Exception as write_exc:
+        _logger.error("DB write failed after pipeline success: %s", write_exc)
+        for doc in doc_dicts:
+            try:
+                await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": doc["id"]}}})
+                await db.clause.delete_many(where={"document_id": doc["id"]})
+                await db.document.update(where={"id": doc["id"]}, data={"status": "failed"})
+            except Exception:
+                pass
         await db.auditlog.create(
             data={
                 "user_id": current_user.id,
-                "action": "ANALYSIS_FAILED",
+                "action": "ANALYSIS_DB_WRITE_FAILED",
                 "target_type": "AnalysisPackage",
                 "target_id": analysis_target_id,
             }
         )
-        raise
+        raise HTTPException(
+            status_code=500,
+            detail="Pipeline completed but results could not be saved. Please retry.",
+        ) from write_exc
 
 
 @router.get("")

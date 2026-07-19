@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 from .config import PIPELINE_CONFIG
+
+_logger = logging.getLogger(__name__)
 
 _ENV_LOADED = False
 
@@ -53,9 +57,10 @@ def complete_json_batch(
         results = data.get(result_key, [])
         if isinstance(results, list) and len(results) == len(items):
             return results
-    except Exception:
-        pass
-    # Fallback: individual calls (original behaviour)
+        _logger.warning("Batch LLM call returned %d results for %d items", len(results) if isinstance(results, list) else -1, len(items))
+    except Exception as exc:
+        _logger.warning("Batch LLM call failed (%d items): %s", len(items), exc)
+    # Fallback: caller handles empty result
     return []
 
 
@@ -138,7 +143,7 @@ def _get_groq_api_keys() -> list[str]:
     return keys
 
 
-def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_retry: bool) -> str:
+def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_retry: bool, _attempt: int = 0) -> str:
     data = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         f"{base_url}/chat/completions",
@@ -159,7 +164,12 @@ def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_
         error_body = exc.read().decode("utf-8", errors="replace")
         if exc.code == 400 and allow_json_retry and "json_validate_failed" in error_body:
             retry_payload = {key: value for key, value in payload.items() if key != "response_format"}
-            return _post_groq(base_url, api_key, retry_payload, allow_json_retry=False)
+            return _post_groq(base_url, api_key, retry_payload, allow_json_retry=False, _attempt=_attempt)
+        if exc.code == 429 and _attempt < 3:
+            wait = 2 ** _attempt
+            _logger.info("Groq rate limited (429), retrying in %ds (attempt %d/3)", wait, _attempt + 1)
+            time.sleep(wait)
+            return _post_groq(base_url, api_key, payload, allow_json_retry, _attempt + 1)
         if _should_try_next_groq_key(exc.code, error_body):
             raise GroqKeyExhaustedError(f"HTTP {exc.code}: {error_body[:200]}") from exc
         raise RuntimeError(f"Groq API error HTTP {exc.code}: {error_body[:500]}") from exc

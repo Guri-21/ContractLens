@@ -1,18 +1,72 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
+import os
+import re
+import json
+import logging
 from typing import Optional
+
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
 from prisma import Prisma
+from pydantic import BaseModel
+
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.document_workflow import validate_reviewer_upload_type
-from pydantic import BaseModel
-import os
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 ADMIN_UPLOAD_DOCUMENT_TYPE = "MSA"
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
+
+
+_MAGIC_BYTES: dict[str, bytes] = {
+    ".pdf": b"%PDF",
+    ".docx": b"PK\x03\x04",
+    ".doc": b"\xd0\xcf\x11\xe0",
+}
+
+
+def _safe_filename(filename: str) -> str:
+    """Strip path components and reject dangerous filenames."""
+    name = os.path.basename(filename.replace("\\", "/"))
+    name = re.sub(r"[^\w\-. ]", "_", name)
+    if not name or name.startswith(".") or os.path.splitext(name)[1].lower() not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=422, detail=f"Invalid or unsupported filename: '{filename}'. Only PDF and DOCX files are allowed.")
+    return name
+
+
+def _validate_magic_bytes(contents: bytes, filename: str) -> None:
+    """Reject files whose first bytes don't match the declared extension."""
+    ext = os.path.splitext(filename)[1].lower()
+    expected = _MAGIC_BYTES.get(ext)
+    if expected and not contents[: len(expected)].startswith(expected):
+        raise HTTPException(
+            status_code=422,
+            detail=f"File '{filename}' content does not match its extension. Please upload a valid {ext.upper()} file.",
+        )
+
+
+def _scan_for_malware(file_path: str) -> None:
+    """Scan for malware via ClamAV. Silently skipped when clamd is unavailable."""
+    try:
+        import clamd  # type: ignore[import]
+        cd = clamd.ClamdUnixSocket()
+        result = cd.scan(file_path)
+        if result and file_path in result:
+            _status, virus = result[file_path]
+            if _status == "FOUND":
+                os.remove(file_path)
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"File rejected: malware detected ({virus}).",
+                )
+    except ImportError:
+        pass
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("ClamAV scan skipped for %s: %s", os.path.basename(file_path), exc)
 
 def _parse_json_field(value, fallback):
     """Parse Prisma Json fields that may be returned as raw strings."""
@@ -110,7 +164,7 @@ def _validate_saved_file(file_path: str, filename: str) -> int:
         os.remove(file_path)
         raise HTTPException(
             status_code=422,
-            detail=f"Uploaded file '{filename}' could not be read as a valid {ext.upper()} document. Error: {exc}",
+            detail=f"Uploaded file '{filename}' could not be read as a valid {ext.upper()} document. Please verify the file is not corrupted.",
         ) from exc
 
     return file_size
@@ -127,21 +181,25 @@ async def upload_document(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
+    safe_name = _safe_filename(file.filename)
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-    file_path = os.path.abspath(file_path)
+    file_path = os.path.abspath(os.path.join(upload_dir, safe_name))
 
     await file.seek(0)
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.")
+    _validate_magic_bytes(contents, safe_name)
     with open(file_path, "wb") as f:
         f.write(contents)
+    _scan_for_malware(file_path)
 
-    file_size = _validate_saved_file(file_path, file.filename)
+    file_size = _validate_saved_file(file_path, safe_name)
 
     doc = await db.document.create(
         data={
-            "name": file.filename,
+            "name": safe_name,
             "document_type": document_type,
             "status": "pending",
             "file_path": file_path,
@@ -161,7 +219,7 @@ async def upload_document(
     return {
         "documentId": doc.id,
         "status": doc.status,
-        "fileName": file.filename,
+        "fileName": safe_name,
         "fileSize": file_size,
     }
 
@@ -172,27 +230,31 @@ async def admin_upload_document(
     db: Prisma = Depends(get_db), 
     current_user = Depends(require_role(["Admin"]))
 ):
-    existing = await db.document.find_first(where={"name": file.filename})
+    safe_name = _safe_filename(file.filename)
+    existing = await db.document.find_first(where={"name": safe_name})
     if existing:
         raise HTTPException(status_code=400, detail="A document with this name already exists")
 
     await _validate_reviewer_assignment(db, assigned_to_id)
-        
+
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, file.filename)
-    file_path = os.path.abspath(file_path)
+    file_path = os.path.abspath(os.path.join(upload_dir, safe_name))
 
     await file.seek(0)
     contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.")
+    _validate_magic_bytes(contents, safe_name)
     with open(file_path, "wb") as f:
         f.write(contents)
+    _scan_for_malware(file_path)
 
-    file_size = _validate_saved_file(file_path, file.filename)
+    file_size = _validate_saved_file(file_path, safe_name)
 
     doc = await db.document.create(
         data={
-            "name": file.filename,
+            "name": safe_name,
             "document_type": ADMIN_UPLOAD_DOCUMENT_TYPE,
             "status": "pending",
             "file_path": file_path,
@@ -213,7 +275,7 @@ async def admin_upload_document(
     return {
         "documentId": doc.id,
         "status": doc.status,
-        "fileName": file.filename,
+        "fileName": safe_name,
         "fileSize": file_size,
     }
 

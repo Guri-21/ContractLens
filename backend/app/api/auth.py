@@ -1,9 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+from typing import Optional
+
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from prisma import Prisma
 from app.database import get_db
-from app.core.security import verify_password, get_password_hash, create_access_token
-from pydantic import BaseModel
+from app.api.deps import get_current_user
+from app.core.limiter import limiter
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
+from app.core.security import SECRET_KEY, ALGORITHM
+from pydantic import BaseModel, Field
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -12,6 +21,7 @@ class Token(BaseModel):
     token_type: str
     email: str
     role: str
+    refresh_token: Optional[str] = None
 
 
 DEMO_ADMIN_EMAIL = "admin@contractlens.com"
@@ -94,8 +104,26 @@ def seeded_password_matches(password: str, hashed_password: str) -> bool:
     except (TypeError, ValueError):
         return False
 
+async def _record_failed_login(db: Prisma, request: Request, email: str, user=None) -> None:
+    ip = request.client.host if request.client else "unknown"
+    _logger.warning("LOGIN_FAILED", extra={"user_id": user.id if user else None, "ip": ip, "email": email})
+    if user:
+        try:
+            await db.auditlog.create(
+                data={
+                    "user_id": user.id,
+                    "action": "LOGIN_FAILED",
+                    "target_type": "User",
+                    "target_id": user.id,
+                }
+            )
+        except Exception:
+            pass
+
+
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = Depends(get_db)):
     if form_data.username in DEMO_USER_PASSWORDS:
         await ensure_seeded_access_users(db, repair_passwords=False)
 
@@ -109,6 +137,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             )
             user = await db.user.find_unique(where={"email": form_data.username}, include={"role": True})
         else:
+            await _record_failed_login(db, request, form_data.username, user)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -116,12 +145,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             )
 
     if not user or not verify_password(form_data.password, user.hashed_password):
+        await _record_failed_login(db, request, form_data.username, user)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
     await db.auditlog.create(
         data={
             "user_id": user.id,
@@ -131,11 +162,75 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         }
     )
     return {
-        "access_token": access_token, 
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "email": user.email,
-        "role": user.role.name if user.role else "Legal Reviewer"
+        "role": user.role.name if user.role else "Legal Reviewer",
     }
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh")
+async def refresh_access_token(req: RefreshRequest, db: Prisma = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(req.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise credentials_exception
+        user_id: str | None = payload.get("sub")
+        if not user_id:
+            raise credentials_exception
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    user = await db.user.find_unique(where={"id": user_id}, include={"role": True})
+    if not user:
+        raise credentials_exception
+
+    return {
+        "access_token": create_access_token(data={"sub": user.id}),
+        "token_type": "bearer",
+        "email": user.email,
+        "role": user.role.name if user.role else "Legal Reviewer",
+    }
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/change-password")
+async def change_password(
+    req: ChangePasswordRequest,
+    db: Prisma = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    user = await db.user.find_unique(where={"id": current_user.id})
+    if not user or not verify_password(req.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    await db.user.update(
+        where={"id": current_user.id},
+        data={"hashed_password": get_password_hash(req.new_password)},
+    )
+    await db.auditlog.create(
+        data={
+            "user_id": current_user.id,
+            "action": "PASSWORD_CHANGED",
+            "target_type": "User",
+            "target_id": current_user.id,
+        }
+    )
+    return {"status": "success"}
 
 
 @router.get("/available-users")

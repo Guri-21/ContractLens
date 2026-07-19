@@ -28,7 +28,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Prisma = Dep
 
 def require_role(allowed_roles: list[str]):
     async def role_checker(current_user = Depends(get_current_user)):
-        if current_user.role.name not in allowed_roles:
+        if current_user.role is None or current_user.role.name not in allowed_roles:
             raise HTTPException(status_code=403, detail="Operation not permitted for your role")
         return current_user
     return role_checker
