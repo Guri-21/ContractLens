@@ -25,7 +25,7 @@ const ROLE_COPY = {
     label: 'Legal Advisor',
     title: 'Choose Legal Advisor',
     description: 'Each advisor has a separate password and its own assigned analysis portfolio.',
-    passwordHint: 'Passwords: Advisor 1 = 1, Advisor 2 = 2, ... Advisor 5 = 5',
+    passwordHint: 'Seeded advisors: Advisor 1 = 1 … Advisor 5 = 5. Admin-created advisors use the password shown at creation.',
     icon: Scale,
     badge: 'Review workspace',
     helper: 'Select assigned MSAs, upload SOWs, review findings and redlines.',

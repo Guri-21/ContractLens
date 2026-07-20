@@ -236,43 +236,23 @@ async def change_password(
 @router.get("/available-users")
 @router.get("/demo-users", include_in_schema=False)
 async def list_demo_users(db: Prisma = Depends(get_db)):
+    # Return every admin + advisor in the system (not just the seeded demo
+    # accounts) so advisors created through the admin panel appear at login.
+    role_filter = {
+        "role": {"is": {"name": {"in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES]}}}
+    }
     users = await db.user.find_many(
-        where={
-            "AND": [
-                {"email": {"in": DEMO_USER_EMAILS}},
-                {
-                    "role": {
-                        "is": {
-                            "name": {
-                                "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
-                            }
-                        }
-                    }
-                },
-            ]
-        },
+        where=role_filter,
         include={"role": True},
         order={"email": "asc"},
     )
 
+    # Keep the seeded demo accounts self-healing if any are missing.
     existing_seeded_emails = {user.email for user in users if user.email in DEMO_USER_EMAILS}
     if existing_seeded_emails != set(DEMO_USER_EMAILS):
         await ensure_seeded_access_users(db, repair_passwords=False)
         users = await db.user.find_many(
-            where={
-                "AND": [
-                    {"email": {"in": DEMO_USER_EMAILS}},
-                    {
-                        "role": {
-                            "is": {
-                                "name": {
-                                    "in": [*ADMIN_ROLE_NAMES, *ADVISOR_ROLE_NAMES],
-                                }
-                            }
-                        }
-                    },
-                ]
-            },
+            where=role_filter,
             include={"role": True},
             order={"email": "asc"},
         )

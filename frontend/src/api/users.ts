@@ -22,7 +22,14 @@ export const fetchUsers = async (options: { force?: boolean } = {}): Promise<Use
 
 export const peekUsers = (): UserResponse[] | undefined => peekCache<UserResponse[]>('users:list');
 
-export const createUser = async (data: { email: string; role_id?: string; password?: string }) => {
+export interface CreatedUserResponse {
+  id: string;
+  email: string;
+  role: string;
+  temporaryPassword?: string;
+}
+
+export const createUser = async (data: { email: string; role_id?: string; password?: string }): Promise<CreatedUserResponse> => {
   // This endpoint might not exist yet, keeping it integration-ready
   const res = await authFetch(`${API_BASE_URL}/api/users/`, {
     method: 'POST',

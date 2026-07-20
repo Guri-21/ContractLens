@@ -16,6 +16,7 @@ export default function LegalAdvisors() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
+  const [createdCredential, setCreatedCredential] = useState<{ email: string; password: string } | null>(null);
   
   const [analyticsData, setAnalyticsData] = useState<AdvisorAnalyticsResponse | null>(null);
   const [isFetchingAnalytics, setIsFetchingAnalytics] = useState<string | null>(null);
@@ -43,7 +44,10 @@ export default function LegalAdvisors() {
     setIsSubmitting(true);
     setError('');
     try {
-      await createUser({ email: newEmail });
+      const created = await createUser({ email: newEmail });
+      if (created.temporaryPassword) {
+        setCreatedCredential({ email: created.email, password: created.temporaryPassword });
+      }
       setNewEmail('');
       await loadAdvisors();
     } catch (err: any) {
@@ -108,6 +112,42 @@ export default function LegalAdvisors() {
               Invite
             </Button>
           </form>
+
+          {createdCredential && (
+            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-emerald-800">Advisor created — share these credentials now</p>
+                  <p className="text-xs text-emerald-700 mt-1">
+                    This password is shown only once and cannot be recovered later.
+                  </p>
+                  <div className="mt-3 font-mono text-sm text-emerald-900 space-y-1">
+                    <div>Email: <span className="font-semibold">{createdCredential.email}</span></div>
+                    <div>Password: <span className="font-semibold">{createdCredential.password}</span></div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs"
+                    onClick={() => navigator.clipboard?.writeText(
+                      `Email: ${createdCredential.email}\nPassword: ${createdCredential.password}`,
+                    )}
+                  >
+                    Copy
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setCreatedCredential(null)}
+                    className="text-xs text-emerald-700 hover:text-emerald-900"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
