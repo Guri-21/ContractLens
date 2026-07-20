@@ -3,6 +3,8 @@ import { login as apiLogin } from '../../api/auth';
 import { useNavigate, useLocation } from 'react-router';
 import { clearApiCache } from '../../api/cache';
 import { clearAllSavedAnalysisCaches } from '../../reviewer-workspace/persistedAnalysis';
+import { prefetchDocuments } from '../../api/documents';
+import { fetchUsers } from '../../api/users';
 
 interface AuthContextType {
   token: string | null;
@@ -33,7 +35,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('role', data.role);
       localStorage.setItem('email', data.email);
-      
+
+      // Warm the cache in the background while the page navigates
+      prefetchDocuments();
+      fetchUsers().catch(() => {});
+
       if (data.role === 'Admin') {
         navigate('/admin/dashboard');
       } else {

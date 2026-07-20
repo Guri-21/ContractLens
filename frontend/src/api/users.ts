@@ -35,7 +35,10 @@ export const createUser = async (data: { email: string; role_id?: string; passwo
     headers: getHeaders(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create user');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Failed to create user');
+  }
   invalidateAdminDataCache();
   invalidateAvailableUsersCache();
   return res.json();

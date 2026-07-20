@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form, Query
 from prisma import Prisma
 from pydantic import BaseModel
 
@@ -339,18 +339,18 @@ async def delete_document(
     return {"status": "success", "deleted_id": document_id}
 
 @router.get("/")
-async def list_documents(db: Prisma = Depends(get_db), current_user = Depends(get_current_user)):
+async def list_documents(
+    db: Prisma = Depends(get_db),
+    current_user = Depends(get_current_user),
+    slim: bool = Query(False, description="Return metadata only — omits clauses and risks for fast list views"),
+):
+    include: dict = {"uploader": True, "assigned_to": True}
+    if not slim:
+        include["clauses"] = {"include": {"risks": True}}
+
     documents = await db.document.find_many(
         where=_document_access_filter(current_user),
-        include={
-            "clauses": {
-                "include": {
-                    "risks": True
-                }
-            },
-            "uploader": True,
-            "assigned_to": True
-        }
+        include=include,
     )
     return [_serialize_document(document) for document in documents]
 

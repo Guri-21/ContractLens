@@ -29,7 +29,21 @@ export async function cachedRequest<T>(
     return value;
   }
 
+  // Fresh hit — return immediately
   if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  // Stale-while-revalidate: return stale data immediately, refresh in background
+  if (cached && !inflightRequests.has(scopedKey)) {
+    const ttl = options.ttlMs ?? cacheConfig.ttlMs;
+    const revalidate = fetcher()
+      .then((value) => {
+        memoryCache.set(scopedKey, { value, expiresAt: Date.now() + ttl });
+        return value;
+      })
+      .finally(() => inflightRequests.delete(scopedKey));
+    inflightRequests.set(scopedKey, revalidate);
     return cached.value;
   }
 

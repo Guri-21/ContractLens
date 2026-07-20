@@ -28,18 +28,23 @@ export interface BackendDocument {
   }>;
 }
 
-export async function fetchBackendDocuments(options: { force?: boolean } = {}): Promise<BackendDocument[]> {
-  return cachedRequest('documents:list', async () => {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+export async function fetchBackendDocuments(options: { force?: boolean; slim?: boolean } = {}): Promise<BackendDocument[]> {
+  const slim = options.slim ?? false;
+  const cacheKey = slim ? 'documents:list:slim' : 'documents:list';
+  return cachedRequest(cacheKey, async () => {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const url = slim ? `${API_BASE_URL}/api/documents/?slim=true` : `${API_BASE_URL}/api/documents/`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error('Failed to fetch backend documents');
+    return res.json();
+  }, { force: options.force });
+}
 
-  const res = await fetch(`${API_BASE_URL}/api/documents`, { headers });
-  if (!res.ok) throw new Error('Failed to fetch backend documents');
-  return res.json();
-  }, options);
+export async function prefetchDocuments(): Promise<void> {
+  fetchBackendDocuments({ slim: true }).catch(() => {});
+  fetchBackendDocuments({ slim: false }).catch(() => {});
 }
 
 export async function uploadDocument(file: File, documentType: DocumentType) {

@@ -15,7 +15,7 @@ export default function AdminDashboard() {
       setIsLoading(true);
       try {
         const [docs, usersList] = await Promise.all([
-          fetchBackendDocuments(),
+          fetchBackendDocuments({ slim: true }),
           fetchUsers()
         ]);
         
