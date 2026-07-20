@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { fetchGlobalAnalytics, GlobalAnalyticsResponse } from '../../api/adminAnalytics';
+import { fetchGlobalAnalytics, peekGlobalAnalytics, GlobalAnalyticsResponse } from '../../api/adminAnalytics';
 import { 
   RiskDistributionDonut, 
   RiskTrendLineChart, 
@@ -8,30 +8,33 @@ import {
 } from '../../components/admin/AdvisorRiskCharts';
 import { FileText, AlertTriangle, Clock, Trophy } from 'lucide-react';
 
+const EMPTY_ANALYTICS: GlobalAnalyticsResponse = {
+  summary: {
+    totalDocuments: 0,
+    analyzedDocuments: 0,
+    pendingDocuments: 0,
+    totalClauses: 0,
+    totalRisks: 0,
+    highRiskCount: 0,
+    criticalRiskCount: 0,
+    notEvaluatedCount: 0,
+    averageRiskScore: 0,
+  },
+  riskDistribution: [],
+  clauseTypeRisk: [],
+  documentAnalytics: [],
+  trend: [],
+  leaderboard: [],
+};
+
 export default function Analytics() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<GlobalAnalyticsResponse>({
-    summary: {
-      totalDocuments: 0,
-      analyzedDocuments: 0,
-      pendingDocuments: 0,
-      totalClauses: 0,
-      totalRisks: 0,
-      highRiskCount: 0,
-      criticalRiskCount: 0,
-      notEvaluatedCount: 0,
-      averageRiskScore: 0,
-    },
-    riskDistribution: [],
-    clauseTypeRisk: [],
-    documentAnalytics: [],
-    trend: [],
-    leaderboard: [],
-  });
+  const cached = peekGlobalAnalytics();
+  const [isLoading, setIsLoading] = useState(!cached);
+  const [data, setData] = useState<GlobalAnalyticsResponse>(cached ?? EMPTY_ANALYTICS);
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
+      if (!cached) setIsLoading(true);
       try {
         const analytics = await fetchGlobalAnalytics();
         setData(analytics);

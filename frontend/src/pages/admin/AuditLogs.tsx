@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertCircle, Clock, FileText, RefreshCw, ShieldCheck, User } from 'lucide-react';
-import { fetchAuditLogs, AuditLogResponse } from '../../api/audit';
+import { fetchAuditLogs, peekAuditLogs, AuditLogResponse } from '../../api/audit';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
@@ -43,14 +43,15 @@ function shortId(value?: string | null) {
 }
 
 export default function AuditLogs() {
-  const [logs, setLogs] = useState<AuditLogResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedLogs = peekAuditLogs();
+  const [logs, setLogs] = useState<AuditLogResponse[]>(cachedLogs ?? []);
+  const [isLoading, setIsLoading] = useState(!cachedLogs);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
 
   const loadLogs = async (force = false) => {
     if (force) setIsRefreshing(true);
-    else setIsLoading(true);
+    else if (logs.length === 0) setIsLoading(true);
     setError('');
 
     try {

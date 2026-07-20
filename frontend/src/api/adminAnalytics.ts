@@ -1,5 +1,5 @@
 import { API_BASE_URL, authFetch } from './client';
-import { cachedRequest } from './cache';
+import { cachedRequest, peekCache } from './cache';
 
 export interface AdvisorAnalyticsResponse {
   advisor: {
@@ -59,6 +59,9 @@ export const fetchAdvisorAnalytics = async (
   return res.json();
   }, options);
 };
+
+export const peekGlobalAnalytics = (): GlobalAnalyticsResponse | undefined =>
+  peekCache<GlobalAnalyticsResponse>('admin-analytics:global');
 
 export const fetchGlobalAnalytics = async (options: { force?: boolean } = {}): Promise<GlobalAnalyticsResponse> => {
   return cachedRequest('admin-analytics:global', async () => {

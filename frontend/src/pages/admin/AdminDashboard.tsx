@@ -1,46 +1,60 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { FileText, Users, AlertTriangle, CheckCircle } from 'lucide-react';
-import { fetchBackendDocuments } from '../../api/documents';
-import { fetchUsers } from '../../api/users';
+import { fetchBackendDocuments, peekBackendDocuments } from '../../api/documents';
+import { fetchUsers, peekUsers } from '../../api/users';
+
+type DashboardData = {
+  stats: { msas: number; users: number; highRisk: number; completed: number };
+  recentDocs: any[];
+  advisors: any[];
+};
+
+/** Pure derivation of dashboard stats. Returns undefined if inputs aren't available. */
+function deriveDashboard(docs?: any[], usersList?: any[]): DashboardData | undefined {
+  if (!docs || !usersList) return undefined;
+  const docsArray = Array.isArray(docs) ? docs : [];
+  const usersArray = Array.isArray(usersList) ? usersList : [];
+
+  const completed = docsArray.filter(d => d.status === 'analyzed').length;
+  let highRisk = 0;
+  docsArray.forEach(d => {
+    const findings = (d.clauses || []).flatMap((c: any) => c.risks || []);
+    if (findings.some((f: any) => f.risk_level === 'high' || f.risk_level === 'critical')) {
+      highRisk++;
+    }
+  });
+
+  return {
+    stats: { msas: docsArray.length, users: usersArray.length, highRisk, completed },
+    recentDocs: docsArray.slice(0, 5),
+    advisors: usersArray.filter((u: any) => u.role === 'Legal Reviewer').slice(0, 5),
+  };
+}
 
 export default function AdminDashboard() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ msas: 0, users: 0, highRisk: 0, completed: 0 });
-  const [recentDocs, setRecentDocs] = useState<any[]>([]);
-  const [advisors, setAdvisors] = useState<any[]>([]);
+  // Seed from cache so returning to the dashboard shows numbers instantly.
+  const seed = deriveDashboard(peekBackendDocuments({ slim: true }), peekUsers());
+  const [isLoading, setIsLoading] = useState(!seed);
+  const [stats, setStats] = useState(seed?.stats ?? { msas: 0, users: 0, highRisk: 0, completed: 0 });
+  const [recentDocs, setRecentDocs] = useState<any[]>(seed?.recentDocs ?? []);
+  const [advisors, setAdvisors] = useState<any[]>(seed?.advisors ?? []);
 
   useEffect(() => {
     const loadStats = async () => {
-      setIsLoading(true);
+      if (!seed) setIsLoading(true);
       try {
         const [docs, usersList] = await Promise.all([
           fetchBackendDocuments({ slim: true }),
           fetchUsers()
         ]);
-        
-        const docsArray = Array.isArray(docs) ? docs : [];
-        const usersArray = Array.isArray(usersList) ? usersList : [];
 
-        // Basic calculation of stats from existing backend APIs
-        const msas = docsArray.length;
-        const totalUsers = usersArray.length;
-        const completed = docsArray.filter(d => d.status === 'analyzed').length;
-        
-        // Dummy high risk count based on logic or data
-        let highRiskCount = 0;
-        docsArray.forEach(d => {
-          const clauses = d.clauses || [];
-          const findings = clauses.flatMap((c: any) => c.risks || []);
-          if (findings.some((f: any) => f.risk_level === 'high' || f.risk_level === 'critical')) {
-            highRiskCount++;
-          }
-        });
-        
-        setStats({ msas, users: totalUsers, highRisk: highRiskCount, completed });
-        setRecentDocs(docsArray.slice(0, 5));
-        setAdvisors(usersArray.filter(u => u.role === 'Legal Reviewer').slice(0, 5));
-
+        const derived = deriveDashboard(docs, usersList);
+        if (derived) {
+          setStats(derived.stats);
+          setRecentDocs(derived.recentDocs);
+          setAdvisors(derived.advisors);
+        }
       } catch (err) {
         console.error("Failed to load stats", err);
       } finally {

@@ -1,5 +1,5 @@
 import { API_BASE_URL, authFetch } from './client';
-import { cachedRequest, invalidateAdminDataCache } from './cache';
+import { cachedRequest, invalidateAdminDataCache, peekCache } from './cache';
 import type { DocumentType } from '../lib/types';
 
 export interface BackendDocument {
@@ -37,6 +37,11 @@ export async function fetchBackendDocuments(options: { force?: boolean; slim?: b
     if (!res.ok) throw new Error('Failed to fetch backend documents');
     return res.json();
   }, { force: options.force });
+}
+
+export function peekBackendDocuments(options: { slim?: boolean } = {}): BackendDocument[] | undefined {
+  const key = options.slim ? 'documents:list:slim' : 'documents:list';
+  return peekCache<BackendDocument[]>(key);
 }
 
 export async function prefetchDocuments(): Promise<void> {

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { fetchBackendDocuments, uploadAdminMsa, assignMsa, deleteMsa } from '../../api/documents';
-import { fetchUsers, UserResponse } from '../../api/users';
+import { fetchBackendDocuments, peekBackendDocuments, uploadAdminMsa, assignMsa, deleteMsa } from '../../api/documents';
+import { fetchUsers, peekUsers, UserResponse } from '../../api/users';
 import {
   AlertCircle,
   CheckCircle2,
@@ -17,9 +17,16 @@ import {
 } from 'lucide-react';
 
 export default function MsaRepository() {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [advisors, setAdvisors] = useState<UserResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Seed from cache so a return visit renders instantly with no loading flash.
+  const cachedDocs = peekBackendDocuments();
+  const cachedUsers = peekUsers();
+  const [documents, setDocuments] = useState<any[]>(
+    cachedDocs ? cachedDocs.filter((d: any) => d.document_type === 'MSA') : [],
+  );
+  const [advisors, setAdvisors] = useState<UserResponse[]>(
+    cachedUsers ? cachedUsers.filter(u => u.role === 'Legal Reviewer') : [],
+  );
+  const [isLoading, setIsLoading] = useState(!(cachedDocs && cachedUsers));
   const [isUploading, setIsUploading] = useState(false);
   const [assigningDocId, setAssigningDocId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -30,7 +37,8 @@ export default function MsaRepository() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadData = async () => {
-    setIsLoading(true);
+    // Only show the skeleton when we have nothing to display yet.
+    if (documents.length === 0) setIsLoading(true);
     try {
       const [docs, users] = await Promise.all([
         fetchBackendDocuments(),

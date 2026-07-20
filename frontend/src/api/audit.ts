@@ -1,5 +1,5 @@
 import { API_BASE_URL, authFetch } from './client';
-import { cachedRequest } from './cache';
+import { cachedRequest, peekCache } from './cache';
 
 export type AuditLogResponse = {
   id: string;
@@ -9,6 +9,9 @@ export type AuditLogResponse = {
   target_id?: string | null;
   timestamp: string;
 };
+
+export const peekAuditLogs = (): AuditLogResponse[] | undefined =>
+  peekCache<AuditLogResponse[]>('audit:list');
 
 export const fetchAuditLogs = async (options: { force?: boolean } = {}) => {
   return cachedRequest<AuditLogResponse[]>(

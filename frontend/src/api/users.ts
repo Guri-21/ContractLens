@@ -1,5 +1,5 @@
 import { API_BASE_URL, authFetch } from './client';
-import { cachedRequest, invalidateAdminDataCache } from './cache';
+import { cachedRequest, invalidateAdminDataCache, peekCache } from './cache';
 import { invalidateAvailableUsersCache } from './auth';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -19,6 +19,8 @@ export const fetchUsers = async (options: { force?: boolean } = {}): Promise<Use
   return res.json();
   }, options);
 };
+
+export const peekUsers = (): UserResponse[] | undefined => peekCache<UserResponse[]>('users:list');
 
 export const createUser = async (data: { email: string; role_id?: string; password?: string }) => {
   // This endpoint might not exist yet, keeping it integration-ready

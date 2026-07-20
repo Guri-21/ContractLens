@@ -3,7 +3,7 @@ type CacheEntry<T> = {
   value: T;
 };
 
-const DEFAULT_TTL_MS = 30_000;
+const DEFAULT_TTL_MS = 120_000;
 const SETTINGS_KEY = 'contractlens-platform-settings';
 const memoryCache = new Map<string, CacheEntry<unknown>>();
 const inflightRequests = new Map<string, Promise<unknown>>();
@@ -65,6 +65,16 @@ export async function cachedRequest<T>(
 
   inflightRequests.set(scopedKey, request);
   return request;
+}
+
+/**
+ * Synchronous read of whatever is currently cached for `key`, or undefined.
+ * Returns the value even if it is stale — callers use this to render instantly
+ * on mount while cachedRequest() refreshes in the background. No network.
+ */
+export function peekCache<T>(key: string): T | undefined {
+  const entry = memoryCache.get(scopedCacheKey(key)) as CacheEntry<T> | undefined;
+  return entry?.value;
 }
 
 export function invalidateApiCache(prefix?: string) {

@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { fetchUsers, createUser, deleteUser, UserResponse } from '../../api/users';
+import { fetchUsers, peekUsers, createUser, deleteUser, UserResponse } from '../../api/users';
 import { fetchAdvisorAnalytics, AdvisorAnalyticsResponse } from '../../api/adminAnalytics';
 import AdvisorAnalyticsModal from '../../components/admin/AdvisorAnalyticsModal';
 import { UserPlus, Trash2, Mail, ShieldAlert, BarChart2, FileText, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LegalAdvisors() {
-  const [advisors, setAdvisors] = useState<UserResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedUsers = peekUsers();
+  const [advisors, setAdvisors] = useState<UserResponse[]>(
+    cachedUsers ? cachedUsers.filter(u => u.role === 'Legal Reviewer') : [],
+  );
+  const [isLoading, setIsLoading] = useState(!cachedUsers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +22,7 @@ export default function LegalAdvisors() {
   const navigate = useNavigate();
 
   const loadAdvisors = async () => {
-    setIsLoading(true);
+    if (advisors.length === 0) setIsLoading(true);
     try {
       const users = await fetchUsers();
       setAdvisors(users.filter(u => u.role === 'Legal Reviewer'));
