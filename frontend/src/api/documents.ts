@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './client';
+import { API_BASE_URL, authFetch } from './client';
 import { cachedRequest, invalidateAdminDataCache } from './cache';
 import type { DocumentType } from '../lib/types';
 
@@ -32,11 +32,8 @@ export async function fetchBackendDocuments(options: { force?: boolean; slim?: b
   const slim = options.slim ?? false;
   const cacheKey = slim ? 'documents:list:slim' : 'documents:list';
   return cachedRequest(cacheKey, async () => {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
     const url = slim ? `${API_BASE_URL}/api/documents/?slim=true` : `${API_BASE_URL}/api/documents/`;
-    const res = await fetch(url, { headers });
+    const res = await authFetch(url);
     if (!res.ok) throw new Error('Failed to fetch backend documents');
     return res.json();
   }, { force: options.force });
@@ -48,22 +45,15 @@ export async function prefetchDocuments(): Promise<void> {
 }
 
 export async function uploadDocument(file: File, documentType: DocumentType) {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
   const formData = new FormData();
   formData.append('file', file);
   formData.append('document_type', documentType);
-  
-  const res = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+
+  const res = await authFetch(`${API_BASE_URL}/api/documents/upload`, {
     method: 'POST',
-    headers,
     body: formData
   });
-  
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || `Upload failed for ${file.name}`);
@@ -73,51 +63,37 @@ export async function uploadDocument(file: File, documentType: DocumentType) {
 }
 
 export async function uploadAdminMsa(file: File, assignedToId?: string) {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  
   const formData = new FormData();
   formData.append('file', file);
   if (assignedToId) formData.append('assigned_to_id', assignedToId);
-  
-  const res = await fetch(`${API_BASE_URL}/api/documents/admin-upload`, {
+
+  const res = await authFetch(`${API_BASE_URL}/api/documents/admin-upload`, {
     method: 'POST',
-    headers,
     body: formData
   });
-  
+
   if (!res.ok) throw new Error('Admin upload failed');
   invalidateAdminDataCache();
   return res.json();
 }
 
 export async function assignMsa(documentId: string, assignedToId: string) {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  
-  const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}/assign`, {
+  const res = await authFetch(`${API_BASE_URL}/api/documents/${documentId}/assign`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assigned_to_id: assignedToId })
   });
-  
+
   if (!res.ok) throw new Error('Failed to assign MSA');
   invalidateAdminDataCache();
   return res.json();
 }
 
 export async function deleteMsa(documentId: string) {
-  const token = localStorage.getItem('token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  
-  const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
-    method: 'DELETE',
-    headers
+  const res = await authFetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    method: 'DELETE'
   });
-  
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || 'Failed to delete MSA');

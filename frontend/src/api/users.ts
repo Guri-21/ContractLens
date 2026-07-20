@@ -1,14 +1,8 @@
-import { API_BASE_URL } from './client';
+import { API_BASE_URL, authFetch } from './client';
 import { cachedRequest, invalidateAdminDataCache } from './cache';
 import { invalidateAvailableUsersCache } from './auth';
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export interface UserResponse {
   id: string;
@@ -20,9 +14,7 @@ export interface UserResponse {
 
 export const fetchUsers = async (options: { force?: boolean } = {}): Promise<UserResponse[]> => {
   return cachedRequest('users:list', async () => {
-  const res = await fetch(`${API_BASE_URL}/api/users/`, {
-    headers: getHeaders(),
-  });
+  const res = await authFetch(`${API_BASE_URL}/api/users/`);
   if (!res.ok) throw new Error('Failed to fetch users');
   return res.json();
   }, options);
@@ -30,9 +22,9 @@ export const fetchUsers = async (options: { force?: boolean } = {}): Promise<Use
 
 export const createUser = async (data: { email: string; role_id?: string; password?: string }) => {
   // This endpoint might not exist yet, keeping it integration-ready
-  const res = await fetch(`${API_BASE_URL}/api/users/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/users/`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: JSON_HEADERS,
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -45,9 +37,8 @@ export const createUser = async (data: { email: string; role_id?: string; passwo
 };
 
 export const deleteUser = async (id: string) => {
-  const res = await fetch(`${API_BASE_URL}/api/users/${id}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/users/${id}`, {
     method: 'DELETE',
-    headers: getHeaders(),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './client';
+import { API_BASE_URL, authFetch } from './client';
 import { cachedRequest } from './cache';
 
 export interface AdvisorAnalyticsResponse {
@@ -49,22 +49,12 @@ export interface GlobalAnalyticsResponse {
   }[];
 }
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-
 export const fetchAdvisorAnalytics = async (
   advisorId: string,
   options: { force?: boolean } = {},
 ): Promise<AdvisorAnalyticsResponse> => {
   return cachedRequest(`admin-analytics:advisor:${advisorId}`, async () => {
-  const res = await fetch(`${API_BASE_URL}/api/admin/advisors/${advisorId}/analytics`, {
-    headers: getHeaders(),
-  });
+  const res = await authFetch(`${API_BASE_URL}/api/admin/advisors/${advisorId}/analytics`);
   if (!res.ok) throw new Error('Failed to fetch advisor analytics');
   return res.json();
   }, options);
@@ -72,9 +62,7 @@ export const fetchAdvisorAnalytics = async (
 
 export const fetchGlobalAnalytics = async (options: { force?: boolean } = {}): Promise<GlobalAnalyticsResponse> => {
   return cachedRequest('admin-analytics:global', async () => {
-  const res = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
-    headers: getHeaders(),
-  });
+  const res = await authFetch(`${API_BASE_URL}/api/admin/analytics`);
   if (!res.ok) throw new Error('Failed to fetch global analytics');
   return res.json();
   }, options);

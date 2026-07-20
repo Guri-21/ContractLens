@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('role', data.role);
       localStorage.setItem('email', data.email);
+      if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
 
       // Warm the cache in the background while the page navigates
       prefetchDocuments();
@@ -57,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(null);
     setEmail(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('role');
     localStorage.removeItem('email');
     navigate('/login');

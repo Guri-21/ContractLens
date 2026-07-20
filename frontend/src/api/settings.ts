@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './client';
+import { API_BASE_URL, authFetch } from './client';
 import { clearApiCache } from './cache';
 
 export type PlatformSettings = {
@@ -10,26 +10,16 @@ export type PlatformSettings = {
   strictRefusalMode: boolean;
 };
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
-  const res = await fetch(`${API_BASE_URL}/api/settings/`, {
-    headers: getHeaders(),
-  });
+  const res = await authFetch(`${API_BASE_URL}/api/settings/`);
   if (!res.ok) throw new Error('Failed to fetch platform settings');
   return res.json();
 }
 
 export async function savePlatformSettings(settings: PlatformSettings): Promise<PlatformSettings> {
-  const res = await fetch(`${API_BASE_URL}/api/settings/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/settings/`, {
     method: 'PUT',
-    headers: getHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings),
   });
   if (!res.ok) throw new Error('Failed to save platform settings');
