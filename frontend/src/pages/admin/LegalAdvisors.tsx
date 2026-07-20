@@ -15,6 +15,7 @@ export default function LegalAdvisors() {
   const [isLoading, setIsLoading] = useState(!cachedUsers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
   const [createdCredential, setCreatedCredential] = useState<{ email: string; password: string } | null>(null);
   
@@ -44,11 +45,15 @@ export default function LegalAdvisors() {
     setIsSubmitting(true);
     setError('');
     try {
-      const created = await createUser({ email: newEmail });
-      if (created.temporaryPassword) {
-        setCreatedCredential({ email: created.email, password: created.temporaryPassword });
+      const chosen = newPassword.trim();
+      const created = await createUser({ email: newEmail, ...(chosen ? { password: chosen } : {}) });
+      // Show the effective password: the one the admin chose, or the generated one.
+      const effectivePassword = chosen || created.temporaryPassword;
+      if (effectivePassword) {
+        setCreatedCredential({ email: created.email, password: effectivePassword });
       }
       setNewEmail('');
+      setNewPassword('');
       await loadAdvisors();
     } catch (err: any) {
       setError(err.message || 'Failed to add advisor');
@@ -91,8 +96,8 @@ export default function LegalAdvisors() {
           <CardTitle>Invite New Advisor</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAdd} className="flex gap-4 items-start">
-            <div className="flex-1 max-w-md">
+          <form onSubmit={handleAdd} className="flex gap-4 items-start flex-wrap">
+            <div className="flex-1 min-w-[220px] max-w-md">
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                 <input
@@ -105,12 +110,26 @@ export default function LegalAdvisors() {
                   disabled={isSubmitting}
                 />
               </div>
-              {error && <p className="text-status-danger text-sm mt-2">{error}</p>}
+            </div>
+            <div className="flex-1 min-w-[200px] max-w-xs">
+              <div className="relative">
+                <ShieldAlert className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Password (optional)"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <p className="text-xs text-text-light mt-1">Leave blank to auto-generate a secure password.</p>
             </div>
             <Button type="submit" variant="primary" className="gap-2" isLoading={isSubmitting}>
               <UserPlus className="w-4 h-4" />
               Invite
             </Button>
+            {error && <p className="text-status-danger text-sm mt-2 w-full">{error}</p>}
           </form>
 
           {createdCredential && (

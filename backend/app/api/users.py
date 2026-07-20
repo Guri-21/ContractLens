@@ -1,5 +1,6 @@
 import secrets
 import string
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,18 +27,20 @@ async def list_users(db: Prisma = Depends(get_db), current_user = Depends(requir
 
 class UserCreate(BaseModel):
     email: str
+    password: Optional[str] = None
 
 @router.post("/")
 async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin"]))):
     existing = await db.user.find_unique(where={"email": request.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-        
+
     role = await db.role.find_unique(where={"name": "Legal Reviewer"})
     if not role:
         raise HTTPException(status_code=500, detail="Role 'Legal Reviewer' not found")
-        
-    temp_password = _generate_temp_password()
+
+    # Use the admin-supplied password if given, else generate a random one.
+    temp_password = request.password.strip() if request.password and request.password.strip() else _generate_temp_password()
     user = await db.user.create(
         data={
             "email": request.email,
