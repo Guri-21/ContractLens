@@ -39,7 +39,7 @@ def _configure_json_logging() -> None:
 
 _configure_json_logging()
 
-app = FastAPI(title="ContractLens API", version="1.0.0")
+app = FastAPI(title="ContractLens API", version="1.0.0", redirect_slashes=False)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

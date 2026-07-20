@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 
 from dotenv import load_dotenv
@@ -34,4 +35,14 @@ async def _connect_with_retry(client: Prisma, max_attempts: int = 5) -> None:
 async def get_db():
     if not db.is_connected():
         await _connect_with_retry(db)
-    return db
+    else:
+        # Prisma reports is_connected()=True even when pool connections are stale.
+        # A cheap SELECT 1 detects this and forces a reconnect before the request runs.
+        try:
+            await db.execute_raw("SELECT 1")
+        except Exception as exc:
+            _logger.warning("DB ping failed (%s) — reconnecting pool…", exc)
+            with contextlib.suppress(Exception):
+                await db.disconnect()
+            await _connect_with_retry(db)
+    yield db
