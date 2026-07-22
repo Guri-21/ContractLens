@@ -68,11 +68,12 @@ class RedactionMap:
 def _apply_presidio(text: str, mapping: RedactionMap) -> str:
     """Optionally redact named entities via Presidio. No-op if unavailable."""
     try:
-        from presidio_analyzer import AnalyzerEngine  # type: ignore[import]
+        analyzer = _get_presidio_analyzer()
     except ImportError:
         return text
+    if analyzer is None:
+        return text
     try:
-        analyzer = _get_presidio_analyzer(AnalyzerEngine)
         results = analyzer.analyze(
             text=text,
             language="en",
@@ -89,13 +90,53 @@ def _apply_presidio(text: str, mapping: RedactionMap) -> str:
         return text
 
 
+# Prefer larger models (better accuracy) but fall back to whatever is installed.
+_SPACY_MODEL_PREFERENCE = ("en_core_web_lg", "en_core_web_md", "en_core_web_sm")
+
 _PRESIDIO_ANALYZER = None
+_PRESIDIO_INIT_FAILED = False
 
 
-def _get_presidio_analyzer(engine_cls: Callable):
-    global _PRESIDIO_ANALYZER
-    if _PRESIDIO_ANALYZER is None:
-        _PRESIDIO_ANALYZER = engine_cls()
+def _find_spacy_model() -> str | None:
+    import importlib.util
+    for model in _SPACY_MODEL_PREFERENCE:
+        if importlib.util.find_spec(model) is not None:
+            return model
+    return None
+
+
+def _get_presidio_analyzer():
+    """Build (once) a Presidio analyzer wired to an installed spaCy model.
+    Returns None if Presidio or a model is unavailable — callers degrade to
+    regex-only redaction."""
+    global _PRESIDIO_ANALYZER, _PRESIDIO_INIT_FAILED
+    if _PRESIDIO_ANALYZER is not None or _PRESIDIO_INIT_FAILED:
+        return _PRESIDIO_ANALYZER
+    try:
+        from presidio_analyzer import AnalyzerEngine
+        from presidio_analyzer.nlp_engine import NlpEngineProvider
+    except ImportError:
+        raise
+    model = _find_spacy_model()
+    if model is None:
+        _logger.warning(
+            "Presidio installed but no spaCy model found; name/org redaction "
+            "disabled. Install one, e.g.: python -m spacy download en_core_web_sm"
+        )
+        _PRESIDIO_INIT_FAILED = True
+        return None
+    try:
+        provider = NlpEngineProvider(nlp_configuration={
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": "en", "model_name": model}],
+        })
+        nlp_engine = provider.create_engine()
+        _PRESIDIO_ANALYZER = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])
+        _logger.info("Presidio entity redaction enabled (spaCy model: %s)", model)
+    except Exception as exc:
+        _logger.warning("Presidio init failed, using regex-only redaction: %s", exc)
+        _PRESIDIO_INIT_FAILED = True
+        return None
     return _PRESIDIO_ANALYZER
 
 
