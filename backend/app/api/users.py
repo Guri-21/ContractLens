@@ -3,7 +3,7 @@ import string
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.core.security import get_password_hash
 from prisma import Prisma
 from app.database import get_db
@@ -26,8 +26,9 @@ async def list_users(db: Prisma = Depends(get_db), current_user = Depends(requir
     return result
 
 class UserCreate(BaseModel):
-    email: str
-    password: Optional[str] = None
+    email: str = Field(..., min_length=3, max_length=254)
+    # If provided, enforce a real password; otherwise a strong one is generated.
+    password: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 @router.post("/")
 async def create_advisor(request: UserCreate, db: Prisma = Depends(get_db), current_user = Depends(require_role(["Admin"]))):

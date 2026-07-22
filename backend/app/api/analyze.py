@@ -3,7 +3,7 @@ import json
 import logging
 from typing import List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
 _logger = logging.getLogger(__name__)
@@ -12,6 +12,7 @@ from prisma import Json, Prisma
 
 from app.api.deps import require_role
 from app.api.documents import _document_access_filter
+from app.core.limiter import limiter
 from app.core.storage import open_plaintext, cleanup_temp
 from app.database import get_db
 from app.document_workflow import validate_analysis_package
@@ -51,7 +52,9 @@ class AnalyzeRunRequest(BaseModel):
 
 
 @router.post("")
+@limiter.limit("20/minute")
 async def analyze_documents(
+    request: Request,
     req: AnalyzeRequest,
     db: Prisma = Depends(get_db),
     current_user=Depends(require_role(["Admin", "Legal Reviewer"])),

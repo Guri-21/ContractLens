@@ -4,12 +4,13 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form, Query
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form, Query, Request
 from prisma import Prisma
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
+from app.core.limiter import limiter
 from app.core.storage import encrypt_at_rest
 from app.document_workflow import validate_reviewer_upload_type
 
@@ -171,7 +172,9 @@ def _validate_saved_file(file_path: str, filename: str) -> int:
     return file_size
 
 @router.post("/upload")
+@limiter.limit("30/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     document_type: str = Form(...),
     db: Prisma = Depends(get_db),
@@ -227,10 +230,12 @@ async def upload_document(
     }
 
 @router.post("/admin-upload")
+@limiter.limit("30/minute")
 async def admin_upload_document(
-    file: UploadFile = File(...), 
+    request: Request,
+    file: UploadFile = File(...),
     assigned_to_id: Optional[str] = Form(None),
-    db: Prisma = Depends(get_db), 
+    db: Prisma = Depends(get_db),
     current_user = Depends(require_role(["Admin"]))
 ):
     safe_name = _safe_filename(file.filename)

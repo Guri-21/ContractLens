@@ -8,15 +8,29 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Single source of truth for "am I in demo/dev mode?". When false (the default),
+# the app is production-hardened: no seeded demo accounts, no login backdoor,
+# and a real JWT_SECRET_KEY is mandatory.
+ENABLE_DEMO_USERS = os.getenv("ENABLE_DEMO_USERS", "false").lower() == "true"
+
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
-    warnings.warn(
-        "JWT_SECRET_KEY not set — using insecure demo fallback. "
-        "Set JWT_SECRET_KEY in .env before production use.",
-        RuntimeWarning,
-        stacklevel=1,
-    )
-    SECRET_KEY = "super-secret-key-for-demo"
+    if ENABLE_DEMO_USERS:
+        warnings.warn(
+            "JWT_SECRET_KEY not set — using insecure demo fallback because "
+            "ENABLE_DEMO_USERS=true. NEVER do this in production.",
+            RuntimeWarning,
+            stacklevel=1,
+        )
+        SECRET_KEY = "super-secret-key-for-demo"
+    else:
+        raise RuntimeError(
+            "JWT_SECRET_KEY is not set. Generate one and put it in the "
+            "environment before starting the server, e.g.:\n"
+            "  python -c \"import secrets; print(secrets.token_urlsafe(64))\"\n"
+            "For local development only, set ENABLE_DEMO_USERS=true to allow an "
+            "insecure fallback key."
+        )
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60

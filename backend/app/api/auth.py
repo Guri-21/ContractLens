@@ -9,7 +9,7 @@ from app.database import get_db
 from app.api.deps import get_current_user
 from app.core.limiter import limiter
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
-from app.core.security import SECRET_KEY, ALGORITHM
+from app.core.security import SECRET_KEY, ALGORITHM, ENABLE_DEMO_USERS
 from pydantic import BaseModel, Field
 
 _logger = logging.getLogger(__name__)
@@ -49,7 +49,12 @@ def demo_display_name(email: str, role: str) -> str:
 
 
 async def ensure_seeded_access_users(db: Prisma, repair_passwords: bool = True) -> None:
-    """Keep the hackathon access accounts available after DB resets/env switches."""
+    """Keep the hackathon access accounts available after DB resets/env switches.
+
+    No-op unless ENABLE_DEMO_USERS=true so production never creates or resets
+    accounts with publicly-known demo passwords."""
+    if not ENABLE_DEMO_USERS:
+        return
     admin_role = await ensure_role(db, "Admin")
     advisor_role = await ensure_role(db, SEEDED_ADVISOR_ROLE)
 
@@ -124,13 +129,15 @@ async def _record_failed_login(db: Prisma, request: Request, email: str, user=No
 @router.post("/token", response_model=Token)
 @limiter.limit("10/minute")
 async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Prisma = Depends(get_db)):
-    if form_data.username in DEMO_USER_PASSWORDS:
+    if ENABLE_DEMO_USERS and form_data.username in DEMO_USER_PASSWORDS:
         await ensure_seeded_access_users(db, repair_passwords=False)
 
     user = await db.user.find_unique(where={"email": form_data.username}, include={"role": True})
     if not user or not verify_password(form_data.password, user.hashed_password):
-        expected_seeded_password = DEMO_USER_PASSWORDS.get(form_data.username)
-        if user and expected_seeded_password and form_data.password == expected_seeded_password:
+        # Demo-only convenience: if a seeded account's stored hash drifted, repair
+        # it when the caller supplies the known demo password. Disabled in prod.
+        expected_seeded_password = DEMO_USER_PASSWORDS.get(form_data.username) if ENABLE_DEMO_USERS else None
+        if expected_seeded_password and user and form_data.password == expected_seeded_password:
             await db.user.update(
                 where={"email": user.email},
                 data={"hashed_password": get_password_hash(expected_seeded_password)},
@@ -236,6 +243,12 @@ async def change_password(
 @router.get("/available-users")
 @router.get("/demo-users", include_in_schema=False)
 async def list_demo_users(db: Prisma = Depends(get_db)):
+    # This endpoint powers the demo "pick a seeded user" login screen and
+    # therefore exposes the user directory (emails + roles) without auth. That
+    # is acceptable only in demo mode; in production it is an enumeration vector,
+    # so return nothing and let users authenticate by typing their credentials.
+    if not ENABLE_DEMO_USERS:
+        return {"admins": [], "advisors": []}
     # Return every admin + advisor in the system (not just the seeded demo
     # accounts) so advisors created through the admin panel appear at login.
     role_filter = {

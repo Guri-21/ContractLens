@@ -1,6 +1,7 @@
 # Owner: Person 1 — main.py
 import json
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,8 +10,23 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api import documents, analyze, auth, playbook, country_rules, users, audit, admin_analytics, settings
 from app.core.limiter import limiter
+from app.core.security import ENABLE_DEMO_USERS
 from app.database import db, get_db
 import uvicorn
+
+
+def _cors_origins() -> list[str]:
+    """Explicit allowlist from CORS_ALLOW_ORIGINS (comma-separated). Falls back
+    to localhost dev origins. Never returns '*' (invalid with credentials)."""
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip() and origin.strip() != "*"]
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ]
 
 
 def _configure_json_logging() -> None:
@@ -39,19 +55,23 @@ def _configure_json_logging() -> None:
 
 _configure_json_logging()
 
-app = FastAPI(title="ContractLens API", version="1.0.0", redirect_slashes=False)
+# Interactive API docs expose the full surface; keep them only in demo/dev.
+_docs_enabled = ENABLE_DEMO_USERS
+app = FastAPI(
+    title="ContractLens API",
+    version="1.0.0",
+    redirect_slashes=False,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS must be outermost — registered last so it wraps everything
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,7 +125,9 @@ async def health_check(database=Depends(get_db)):
         await database.user.count()
         return {"status": "healthy", "database": "connected"}
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+        # Log the detail server-side; don't leak DB internals to the caller.
+        logging.getLogger(__name__).error("Health check DB failure: %s", exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 
 if __name__ == "__main__":
