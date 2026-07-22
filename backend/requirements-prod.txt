@@ -1,6 +1,7 @@
 # Production requirements — stripped of heavy local ML deps (torch, chromadb, neo4j)
 # that are unused in the deployed stack (Groq LLM calls go over HTTP, no local inference).
 fastapi
+chromadb[httpx]
 uvicorn[standard]
 pydantic
 python-multipart

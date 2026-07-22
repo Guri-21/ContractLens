@@ -1,108 +1,112 @@
 """
-Intelligence Layer — ChromaDB Vector Store.
+Intelligence Layer — ChromaDB Vector Store (Chroma Cloud).
 
-Persistent local vector database for clause embeddings.
-Supports add, query-by-similarity, and collection management.
+Uses hybrid search: Qwen dense embeddings + Splade sparse embeddings
+fused via Reciprocal Rank Fusion. All embedding is server-side on
+Chroma Cloud — zero local ML compute.
 
-Public API:
-    get_store()          → VectorStore   (singleton)
-    store.add_clauses()  → int           (count added)
-    store.search()       → list[dict]    (similar clauses)
-    store.delete_collection() → None
+Required env vars:
+    CHROMA_API_KEY   — from Chroma Cloud dashboard
+    CHROMA_TENANT    — your tenant UUID
+    CHROMA_DATABASE  — database name (default: Contract_Lens)
+    CHROMA_HOST      — (default: api.trychroma.com)
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import Any, Optional
 
 from .embeddings import EmbeddedClause, build_embedding_text
 
 logger = logging.getLogger(__name__)
 
-# ChromaDB storage directory — relative to backend/
-_CHROMA_DIR = os.getenv(
-    "CHROMA_PERSIST_DIR",
-    str(Path(__file__).resolve().parent.parent.parent / "chroma_data"),
-)
-
 _COLLECTION_NAME = "contract_clauses"
+_store_instance: Optional["VectorStore"] = None
 
-# Module-level singleton
-_store_instance: Optional[VectorStore] = None
+
+def _cloud_client():
+    import chromadb
+    return chromadb.HttpClient(
+        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
+        port=443,
+        ssl=True,
+        tenant=os.getenv("CHROMA_TENANT", ""),
+        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
+        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
+    )
+
+
+def _make_embedding_functions():
+    from chromadb.utils.embedding_functions import (
+        ChromaCloudQwenEmbeddingFunction,
+        ChromaCloudQwenEmbeddingModel,
+        ChromaCloudSpladeEmbeddingFunction,
+    )
+    dense_ef = ChromaCloudQwenEmbeddingFunction(
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
+        task="text_matching",
+    )
+    sparse_ef = ChromaCloudSpladeEmbeddingFunction()
+    return dense_ef, sparse_ef
 
 
 class VectorStore:
     """
-    Thin wrapper around a ChromaDB collection.
+    Chroma Cloud wrapper with hybrid dense+sparse search.
 
-    ChromaDB handles embedding generation internally using
-    sentence-transformers (all-MiniLM-L6-v2) by default.
+    Collections are persistent in Chroma Cloud — survives Render restarts.
     """
 
-    def __init__(self, persist_dir: str = _CHROMA_DIR) -> None:
+    def __init__(self) -> None:
         try:
-            import chromadb
-            from chromadb.config import Settings
+            from chromadb import Schema, SparseVectorIndexConfig, K
         except ImportError:
-            raise ImportError(
-                "chromadb is required: pip install chromadb"
-            )
+            raise ImportError("chromadb is required: pip install 'chromadb[httpx]'")
 
-        self._client = chromadb.PersistentClient(
-            path=persist_dir,
-            settings=Settings(anonymized_telemetry=False),
+        self._client = _cloud_client()
+        dense_ef, sparse_ef = _make_embedding_functions()
+        self._dense_ef = dense_ef
+
+        schema = Schema()
+        schema.create_index(
+            config=SparseVectorIndexConfig(
+                source_key=K.DOCUMENT,
+                embedding_function=sparse_ef,
+            ),
+            key="sparse_embedding",
         )
+
         self._collection = self._client.get_or_create_collection(
             name=_COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
+            embedding_function=dense_ef,
+            schema=schema,
         )
-        logger.info(
-            "ChromaDB ready — %d existing documents in '%s'",
-            self._collection.count(),
-            _COLLECTION_NAME,
-        )
+        logger.info("Chroma Cloud ready — collection '%s'", _COLLECTION_NAME)
 
     # ── Write ────────────────────────────────────────────────────
 
     def add_clauses(self, clauses: list[EmbeddedClause]) -> int:
-        """
-        Upsert clauses into the vector store.
-
-        Returns:
-            Number of clauses added.
-        """
         if not clauses:
             return 0
 
-        ids: list[str] = []
-        documents: list[str] = []
-        metadatas: list[dict[str, Any]] = []
-
+        ids, documents, metadatas = [], [], []
         for clause in clauses:
             ids.append(clause.embedding_id)
             documents.append(build_embedding_text(clause))
-            metadatas.append(
-                {
-                    "clause_id": clause.clause_id,
-                    "document_id": clause.document_id,
-                    "document_name": clause.document_name,
-                    "document_type": clause.document_type,
-                    "clause_type": clause.clause_type or "unknown",
-                    "section_number": clause.section_number or "",
-                    "text": clause.text[:500],  # store truncated for display
-                }
-            )
+            metadatas.append({
+                "clause_id": clause.clause_id,
+                "document_id": clause.document_id,
+                "document_name": clause.document_name,
+                "document_type": clause.document_type,
+                "clause_type": clause.clause_type or "unknown",
+                "section_number": clause.section_number or "",
+                "text": clause.text[:500],
+            })
 
-        self._collection.upsert(
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas,
-        )
-
-        logger.info("Upserted %d clauses into ChromaDB", len(ids))
+        self._collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
+        logger.info("Upserted %d clauses to Chroma Cloud", len(ids))
         return len(ids)
 
     # ── Read ─────────────────────────────────────────────────────
@@ -114,93 +118,66 @@ class VectorStore:
         where_filter: Optional[dict[str, Any]] = None,
         exclude_document_id: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """
-        Find clauses semantically similar to `query_text`.
+        combined_filter: dict[str, Any] = {}
+        if exclude_document_id and where_filter:
+            combined_filter = {"$and": [{"document_id": {"$ne": exclude_document_id}}, where_filter]}
+        elif exclude_document_id:
+            combined_filter = {"document_id": {"$ne": exclude_document_id}}
+        elif where_filter:
+            combined_filter = where_filter
 
-        Args:
-            query_text: The clause text to find matches for.
-            n_results: Max number of results.
-            where_filter: Optional ChromaDB where clause for metadata filtering.
-            exclude_document_id: Exclude results from this document
-                                 (useful for cross-contract search).
-
-        Returns:
-            List of dicts with keys: clause_id, document_id, document_name,
-            document_type, clause_type, text, similarity_score.
-        """
-        if self._collection.count() == 0:
-            return []
-
-        # Build where filter
-        combined_filter = where_filter or {}
-        if exclude_document_id:
-            combined_filter = {
-                "$and": [
-                    {"document_id": {"$ne": exclude_document_id}},
-                    *(
-                        [where_filter]
-                        if where_filter
-                        else []
-                    ),
-                ]
-            } if where_filter else {"document_id": {"$ne": exclude_document_id}}
-
-        query_kwargs: dict[str, Any] = {
-            "query_texts": [query_text],
-            "n_results": min(n_results, self._collection.count()),
-        }
-        if combined_filter:
-            query_kwargs["where"] = combined_filter
-
-        results = self._collection.query(**query_kwargs)
-
-        # Flatten ChromaDB's nested response format
-        matches: list[dict[str, Any]] = []
-        if results and results["ids"] and results["ids"][0]:
-            for i, _id in enumerate(results["ids"][0]):
-                meta = results["metadatas"][0][i] if results["metadatas"] else {}
-                distance = results["distances"][0][i] if results["distances"] else 1.0
-                # ChromaDB cosine distance → similarity score
-                similarity = max(0.0, 1.0 - distance)
-
-                matches.append(
-                    {
-                        "clause_id": meta.get("clause_id", ""),
-                        "document_id": meta.get("document_id", ""),
-                        "document_name": meta.get("document_name", ""),
-                        "document_type": meta.get("document_type", ""),
-                        "clause_type": meta.get("clause_type", ""),
-                        "section_number": meta.get("section_number", ""),
-                        "text": meta.get("text", ""),
-                        "similarity_score": round(similarity, 4),
-                    }
+        try:
+            from chromadb import Search, Knn, Rrf
+            hybrid = Search(
+                query=Rrf(
+                    ranks=[
+                        Knn(query=query_text, return_rank=True),
+                        Knn(query=query_text, key="sparse_embedding", return_rank=True),
+                    ],
+                    weights=[0.7, 0.3],
+                    k=60,
                 )
+            )
+            query_kwargs: dict[str, Any] = {"query": hybrid, "n_results": n_results}
+            if combined_filter:
+                query_kwargs["where"] = combined_filter
+            results = self._collection.query(**query_kwargs)
+        except Exception as exc:
+            logger.warning("Hybrid search failed (%s) — falling back to dense-only", exc)
+            query_kwargs = {"query_texts": [query_text], "n_results": n_results}
+            if combined_filter:
+                query_kwargs["where"] = combined_filter
+            results = self._collection.query(**query_kwargs)
 
+        matches: list[dict[str, Any]] = []
+        ids = (results.get("ids") or [[]])[0]
+        for i, _id in enumerate(ids):
+            meta = ((results.get("metadatas") or [[]])[0] or [{}])[i]
+            distance = ((results.get("distances") or [[1.0]])[0] or [1.0])[i]
+            matches.append({
+                "clause_id": meta.get("clause_id", ""),
+                "document_id": meta.get("document_id", ""),
+                "document_name": meta.get("document_name", ""),
+                "document_type": meta.get("document_type", ""),
+                "clause_type": meta.get("clause_type", ""),
+                "section_number": meta.get("section_number", ""),
+                "text": meta.get("text", ""),
+                "similarity_score": round(max(0.0, 1.0 - float(distance)), 4),
+            })
         return matches
 
     # ── Management ───────────────────────────────────────────────
 
     def count(self) -> int:
-        """Return total number of stored clause embeddings."""
         return self._collection.count()
 
     def delete_collection(self) -> None:
-        """Drop the entire collection. Use with caution."""
         self._client.delete_collection(_COLLECTION_NAME)
-        self._collection = self._client.get_or_create_collection(
-            name=_COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
-        logger.warning("ChromaDB collection '%s' deleted", _COLLECTION_NAME)
+        logger.warning("Chroma Cloud collection '%s' deleted", _COLLECTION_NAME)
 
 
-def get_store(persist_dir: str = _CHROMA_DIR) -> VectorStore:
-    """
-    Return the module-level VectorStore singleton.
-
-    Lazy-initialized on first call.
-    """
+def get_store() -> VectorStore:
     global _store_instance
     if _store_instance is None:
-        _store_instance = VectorStore(persist_dir)
+        _store_instance = VectorStore()
     return _store_instance

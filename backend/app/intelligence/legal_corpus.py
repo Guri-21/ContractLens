@@ -18,10 +18,6 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-_CHROMA_DIR = os.getenv(
-    "CHROMA_PERSIST_DIR",
-    str(Path(__file__).resolve().parent.parent.parent / "chroma_data"),
-)
 _INDIAN_STATUTES_COLLECTION = "indian_statutes"
 _MAX_EMBED_CHARS = 2500
 _MAX_DISPLAY_CHARS = 1000
@@ -185,23 +181,34 @@ def upsert_statute_sections(
 
     try:
         import chromadb
-        from chromadb.config import Settings
+        from chromadb.utils.embedding_functions import (
+            ChromaCloudQwenEmbeddingFunction,
+            ChromaCloudQwenEmbeddingModel,
+        )
     except ImportError as exc:
-        raise ImportError("chromadb is required: pip install chromadb") from exc
+        raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
-    client = chromadb.PersistentClient(
-        path=persist_dir,
-        settings=Settings(anonymized_telemetry=False),
+    client = chromadb.HttpClient(
+        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
+        port=443,
+        ssl=True,
+        tenant=os.getenv("CHROMA_TENANT", ""),
+        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
+        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
     )
     if replace_collection:
         try:
             client.delete_collection(_INDIAN_STATUTES_COLLECTION)
-        except ValueError:
+        except Exception:
             pass
 
+    dense_ef = ChromaCloudQwenEmbeddingFunction(
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
+        task="text_matching",
+    )
     collection = client.get_or_create_collection(
         name=_INDIAN_STATUTES_COLLECTION,
-        metadata={"hnsw:space": "cosine"},
+        embedding_function=dense_ef,
     )
 
     collection.upsert(
@@ -220,17 +227,28 @@ def search_indian_statutes(
     """Search Indian statute sections by semantic similarity."""
     try:
         import chromadb
-        from chromadb.config import Settings
+        from chromadb.utils.embedding_functions import (
+            ChromaCloudQwenEmbeddingFunction,
+            ChromaCloudQwenEmbeddingModel,
+        )
     except ImportError as exc:
-        raise ImportError("chromadb is required: pip install chromadb") from exc
+        raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
-    client = chromadb.PersistentClient(
-        path=persist_dir,
-        settings=Settings(anonymized_telemetry=False),
+    client = chromadb.HttpClient(
+        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
+        port=443,
+        ssl=True,
+        tenant=os.getenv("CHROMA_TENANT", ""),
+        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
+        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
+    )
+    dense_ef = ChromaCloudQwenEmbeddingFunction(
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
+        task="text_matching",
     )
     collection = client.get_or_create_collection(
         name=_INDIAN_STATUTES_COLLECTION,
-        metadata={"hnsw:space": "cosine"},
+        embedding_function=dense_ef,
     )
     if collection.count() == 0:
         return []

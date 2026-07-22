@@ -18,6 +18,23 @@ from app.database import get_db
 from app.document_workflow import validate_analysis_package
 from pipeline.run_pipeline import run_analysis_pipeline
 
+# Intelligence layer (Chroma Cloud RAG). Imported lazily so a missing
+# CHROMA_API_KEY or import error doesn't break the whole analyze route.
+def _run_pipeline_with_intelligence(doc_dicts, playbook_rules, country_code):
+    try:
+        from app.intelligence.enhanced_pipeline import analyze_with_intelligence
+        enhanced = analyze_with_intelligence(doc_dicts, playbook_rules, country_code)
+        result = enhanced.pipeline_result
+        result["_intelligence"] = {
+            "total_clauses_embedded": enhanced.total_clauses_embedded,
+            "total_similar_found": enhanced.total_similar_found,
+            "similar_contracts_summary": enhanced.similar_contracts_summary,
+        }
+        return result
+    except Exception as exc:
+        _logger.warning("Intelligence layer unavailable (%s) — running base pipeline", exc)
+        return run_analysis_pipeline(doc_dicts, playbook_rules, country_code)
+
 router = APIRouter(prefix="/api/analyze", tags=["analyze"])
 
 
@@ -111,7 +128,7 @@ async def analyze_documents(
     # Phase 1: run the pipeline (with timeout)
     try:
         result = await asyncio.wait_for(
-            run_in_threadpool(run_analysis_pipeline, doc_dicts, playbook_rules, req.countryCode),
+            run_in_threadpool(_run_pipeline_with_intelligence, doc_dicts, playbook_rules, req.countryCode),
             timeout=300.0,
         )
     except asyncio.TimeoutError as exc:
@@ -260,10 +277,11 @@ def _finding_db_payload(finding: dict) -> dict:
 
 
 def _api_result(result: dict) -> dict:
-    return {
-        **result,
-        "risks": result.get("findings", []),
-    }
+    intelligence = result.pop("_intelligence", None)
+    base = {**result, "risks": result.get("findings", [])}
+    if intelligence:
+        base["intelligence"] = intelligence
+    return base
 
 
 def _json_value(value, fallback):

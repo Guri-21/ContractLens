@@ -22,3 +22,11 @@ services:
         value: "true"
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: CHROMA_API_KEY
+        sync: false          # paste from Chroma Cloud dashboard
+      - key: CHROMA_TENANT
+        value: "dbd61c21-764b-4661-adf5-3b059fcfb8a4"
+      - key: CHROMA_DATABASE
+        value: "Contract_Lens"
+      - key: CHROMA_HOST
+        value: "api.trychroma.com"
