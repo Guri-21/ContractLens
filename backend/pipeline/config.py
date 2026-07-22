@@ -73,7 +73,18 @@ PIPELINE_CONFIG = {
 
     # LLM provider settings used by all LLM-backed steps.
     # provider: "groq" | "claude"
+    #   For maximum confidentiality, point GROQ_BASE_URL at a self-hosted,
+    #   OpenAI-compatible endpoint (e.g. vLLM/Ollama in your own VPC) — the
+    #   "groq" code path works unchanged and no data leaves your network.
     "llm_provider": os.getenv("LLM_PROVIDER", "groq"),
+
+    # Security controls (see SECURITY.md).
+    # Redact PII/entities from prompts before they leave the network, then
+    # re-hydrate the model's response locally. On by default.
+    "llm_redaction": os.getenv("LLM_REDACTION", "true").lower() != "false",
+    # Refuse plaintext HTTP to the LLM endpoint (localhost is exempt so a
+    # self-hosted model on 127.0.0.1 still works).
+    "llm_require_https": os.getenv("LLM_REQUIRE_HTTPS", "true").lower() != "false",
 
     # Groq is OpenAI-compatible and was the best benchmarked prototype model.
     "groq_model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),

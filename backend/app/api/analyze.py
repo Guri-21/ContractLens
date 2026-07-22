@@ -12,6 +12,7 @@ from prisma import Json, Prisma
 
 from app.api.deps import require_role
 from app.api.documents import _document_access_filter
+from app.core.storage import open_plaintext, cleanup_temp
 from app.database import get_db
 from app.document_workflow import validate_analysis_package
 from pipeline.run_pipeline import run_analysis_pipeline
@@ -84,14 +85,25 @@ async def analyze_documents(
     playbook_rules = [f"{rule.title}: {rule.description}" for rule in rules]
 
     analysis_target_id = req.sowDocumentId
+    # Audit records who analyzed what — document IDs and count only, never
+    # document content.
     await db.auditlog.create(
         data={
             "user_id": current_user.id,
-            "action": "ANALYSIS_STARTED",
+            "action": f"ANALYSIS_STARTED_{len(doc_dicts)}DOCS",
             "target_type": "AnalysisPackage",
             "target_id": analysis_target_id,
         }
     )
+
+    # Decrypt any at-rest-encrypted documents to short-lived temp files that
+    # exist only for the duration of the pipeline run.
+    temp_paths: list[str] = []
+    for doc in doc_dicts:
+        usable_path, is_temp = open_plaintext(doc["file_path"])
+        doc["file_path"] = usable_path
+        if is_temp:
+            temp_paths.append(usable_path)
 
     # Phase 1: run the pipeline (with timeout)
     try:
@@ -122,6 +134,10 @@ async def analyze_documents(
             }
         )
         raise
+    finally:
+        # Always shred the decrypted plaintext temp files.
+        for temp_path in temp_paths:
+            cleanup_temp(temp_path)
 
     # Phase 2: persist results — roll back partial writes on failure
     try:

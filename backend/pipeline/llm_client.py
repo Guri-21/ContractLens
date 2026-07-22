@@ -10,9 +10,42 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from urllib.parse import urlparse
+
 from .config import PIPELINE_CONFIG
+from .redaction import redact
 
 _logger = logging.getLogger(__name__)
+
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _enforce_transport(base_url: str) -> None:
+    """Reject plaintext HTTP to the LLM endpoint (localhost exempt for self-hosting)."""
+    if not PIPELINE_CONFIG.get("llm_require_https", True):
+        return
+    parsed = urlparse(base_url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" and host not in _LOCAL_HOSTS:
+        raise RuntimeError(
+            f"Refusing to send document content over insecure transport "
+            f"({parsed.scheme}://{host}). Use https, or set LLM_REQUIRE_HTTPS=false "
+            f"only for a trusted localhost model."
+        )
+
+
+def _safe_error_summary(error_body: str) -> str:
+    """Extract only the error type/code from an LLM error body — never the
+    echoed request content, which may contain confidential document text."""
+    try:
+        parsed = json.loads(error_body)
+        err = parsed.get("error", parsed) if isinstance(parsed, dict) else {}
+        if isinstance(err, dict):
+            code = err.get("code") or err.get("type") or "unknown"
+            return f"error_code={code}"
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        pass
+    return "error_code=unparseable"
 
 _ENV_LOADED = False
 
@@ -65,12 +98,21 @@ def complete_json_batch(
 
 
 def complete_text(prompt: str, max_tokens: int | None = None) -> str:
+    # Redact confidential identifiers before the prompt leaves the network,
+    # then re-hydrate the model's response locally so callers see real values.
+    mapping = None
+    if PIPELINE_CONFIG.get("llm_redaction", True):
+        prompt, mapping = redact(prompt)
+
     provider = PIPELINE_CONFIG["llm_provider"].lower()
     if provider == "claude":
-        return _complete_claude(prompt, max_tokens)
-    if provider == "groq":
-        return _complete_groq(prompt, max_tokens)
-    raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
+        output = _complete_claude(prompt, max_tokens)
+    elif provider == "groq":
+        output = _complete_groq(prompt, max_tokens)
+    else:
+        raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
+
+    return mapping.rehydrate(output) if mapping is not None else output
 
 
 def complete_json(prompt: str, max_tokens: int | None = None) -> dict[str, Any]:
@@ -97,6 +139,7 @@ def _complete_groq(prompt: str, max_tokens: int | None = None) -> str:
         )
 
     base_url = PIPELINE_CONFIG["groq_base_url"].rstrip("/")
+    _enforce_transport(base_url)
     payload = {
         "model": PIPELINE_CONFIG["groq_model"],
         "messages": [
@@ -170,9 +213,12 @@ def _post_groq(base_url: str, api_key: str, payload: dict[str, Any], allow_json_
             _logger.info("Groq rate limited (429), retrying in %ds (attempt %d/3)", wait, _attempt + 1)
             time.sleep(wait)
             return _post_groq(base_url, api_key, payload, allow_json_retry, _attempt + 1)
+        # Never surface the raw error body — it can echo the request content
+        # (confidential document text). Log/raise only the error code.
+        summary = _safe_error_summary(error_body)
         if _should_try_next_groq_key(exc.code, error_body):
-            raise GroqKeyExhaustedError(f"HTTP {exc.code}: {error_body[:200]}") from exc
-        raise RuntimeError(f"Groq API error HTTP {exc.code}: {error_body[:500]}") from exc
+            raise GroqKeyExhaustedError(f"HTTP {exc.code}: {summary}") from exc
+        raise RuntimeError(f"Groq API error HTTP {exc.code}: {summary}") from exc
 
 
 def _should_try_next_groq_key(status_code: int, error_body: str) -> bool:

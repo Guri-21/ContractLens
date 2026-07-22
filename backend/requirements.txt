@@ -21,3 +21,7 @@ neo4j
 # Security & reliability
 slowapi
 python-json-logger
+cryptography  # at-rest encryption of uploaded documents (AT_REST_ENCRYPTION_KEY)
+# Optional: named-entity redaction of LLM prompts. If absent, regex redaction
+# still runs. Install with: pip install presidio-analyzer && python -m spacy download en_core_web_lg
+# presidio-analyzer

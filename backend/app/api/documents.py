@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
+from app.core.storage import encrypt_at_rest
 from app.document_workflow import validate_reviewer_upload_type
 
 logger = logging.getLogger(__name__)
@@ -196,6 +197,8 @@ async def upload_document(
     _scan_for_malware(file_path)
 
     file_size = _validate_saved_file(file_path, safe_name)
+    # Encrypt at rest + restrict permissions once the file is validated.
+    encrypt_at_rest(file_path)
 
     doc = await db.document.create(
         data={
@@ -251,6 +254,8 @@ async def admin_upload_document(
     _scan_for_malware(file_path)
 
     file_size = _validate_saved_file(file_path, safe_name)
+    # Encrypt at rest + restrict permissions once the file is validated.
+    encrypt_at_rest(file_path)
 
     doc = await db.document.create(
         data={
