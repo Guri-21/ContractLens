@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: contractlens-api
+    runtime: python
+    rootDir: ContractLens/backend
+    buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma db push --accept-data-loss
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # paste your Neon connection string in Render dashboard
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: GROK_API_KEY
+        sync: false
+      - key: GROK_API_KEY_2
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        sync: false          # set to your Vercel frontend URL once deployed
+      - key: ENABLE_DEMO_USERS
+        value: "true"
+      - key: LLM_REDACTION
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.11"

@@ -1,0 +1,20 @@
+# Production requirements — stripped of heavy local ML deps (torch, chromadb, neo4j)
+# that are unused in the deployed stack (Groq LLM calls go over HTTP, no local inference).
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+pdfplumber
+PyMuPDF
+python-docx
+python-dotenv
+pyjwt
+passlib[bcrypt]
+prisma
+slowapi
+python-json-logger
+cryptography
+# Presidio NER redaction is optional — regex redaction runs even without it.
+# Uncomment if your host has enough RAM (600MB+ needed for spaCy model):
+# presidio-analyzer
+# spacy
