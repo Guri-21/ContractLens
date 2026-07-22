@@ -2,8 +2,8 @@ services:
   - type: web
     name: contractlens-api
     runtime: python
-    rootDir: ContractLens/backend
-    buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma db push --accept-data-loss
+    rootDir: backend
+    buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma py fetch && prisma db push --accept-data-loss
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
