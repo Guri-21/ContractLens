@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma py fetch && prisma db push --accept-data-loss && python setup_db.py
-    startCommand: python fetch_query_engine.py && uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: python fetch_query_engine.py && PRISMA_QUERY_ENGINE_BINARY=/tmp/prisma-query-engine-debian-openssl-3.0.x uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false          # Supabase Transaction pooler URL (port 6543)
