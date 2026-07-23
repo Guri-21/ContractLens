@@ -12,6 +12,7 @@ from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.limiter import limiter
 from app.core.storage import encrypt_at_rest
+from app.core.file_storage import upload_file, delete_file
 from app.document_workflow import validate_reviewer_upload_type
 
 logger = logging.getLogger(__name__)
@@ -186,22 +187,27 @@ async def upload_document(
         raise HTTPException(status_code=422, detail=str(error)) from error
 
     safe_name = _safe_filename(file.filename)
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.abspath(os.path.join(upload_dir, safe_name))
 
     await file.seek(0)
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.")
     _validate_magic_bytes(contents, safe_name)
-    with open(file_path, "wb") as f:
-        f.write(contents)
-    _scan_for_malware(file_path)
 
-    file_size = _validate_saved_file(file_path, safe_name)
-    # Encrypt at rest + restrict permissions once the file is validated.
-    encrypt_at_rest(file_path)
+    # Write to a temp local path for malware scan + structural validation.
+    import tempfile
+    fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(safe_name)[1])
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(contents)
+        _scan_for_malware(tmp_path)
+        file_size = _validate_saved_file(tmp_path, safe_name)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    # Persist to Supabase Storage (or local disk if not configured).
+    file_path = upload_file(contents, safe_name)
 
     doc = await db.document.create(
         data={
@@ -245,22 +251,24 @@ async def admin_upload_document(
 
     await _validate_reviewer_assignment(db, assigned_to_id)
 
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.abspath(os.path.join(upload_dir, safe_name))
-
     await file.seek(0)
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.")
     _validate_magic_bytes(contents, safe_name)
-    with open(file_path, "wb") as f:
-        f.write(contents)
-    _scan_for_malware(file_path)
 
-    file_size = _validate_saved_file(file_path, safe_name)
-    # Encrypt at rest + restrict permissions once the file is validated.
-    encrypt_at_rest(file_path)
+    import tempfile
+    fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(safe_name)[1])
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(contents)
+        _scan_for_malware(tmp_path)
+        file_size = _validate_saved_file(tmp_path, safe_name)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    file_path = upload_file(contents, safe_name)
 
     doc = await db.document.create(
         data={
@@ -321,21 +329,19 @@ async def assign_document(
 async def delete_document(
     document_id: str,
     db: Prisma = Depends(get_db),
-    current_user = Depends(require_role(["Admin"]))
+    current_user = Depends(require_role(["Admin", "Legal Reviewer"]))
 ):
-    doc = await db.document.find_unique(where={"id": document_id})
+    doc = await db.document.find_first(
+        where=_document_access_filter(current_user, [document_id])
+    )
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-        
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
+
     await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": document_id}}})
     await db.clause.delete_many(where={"document_id": document_id})
     await db.document.delete(where={"id": document_id})
-    
-    if os.path.exists(doc.file_path):
-        try:
-            os.remove(doc.file_path)
-        except:
-            pass
+
+    delete_file(doc.file_path)
             
     await db.auditlog.create(
         data={

@@ -15,6 +15,7 @@ prisma
 slowapi
 python-json-logger
 cryptography
+supabase
 # Presidio NER redaction is optional — regex redaction runs even without it.
 # Uncomment if your host has enough RAM (600MB+ needed for spaCy model):
 # presidio-analyzer
