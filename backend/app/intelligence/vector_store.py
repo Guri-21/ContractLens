@@ -39,12 +39,13 @@ def _cloud_client():
 
 
 def _make_embedding_functions():
-    from chromadb.utils.embedding_functions import (
+    from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
         ChromaCloudQwenEmbeddingFunction,
-        ChromaCloudSpladeEmbeddingFunction,
+        ChromaCloudQwenEmbeddingModel,
     )
+    from chromadb.utils.embedding_functions import ChromaCloudSpladeEmbeddingFunction
     dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model="qwen3-embedding-0.6b",
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
         task="text_matching",
     )
     sparse_ef = ChromaCloudSpladeEmbeddingFunction()

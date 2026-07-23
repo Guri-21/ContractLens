@@ -177,7 +177,10 @@ def upsert_statute_sections(
 
     try:
         import chromadb
-        from chromadb.utils.embedding_functions import ChromaCloudQwenEmbeddingFunction
+        from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
+            ChromaCloudQwenEmbeddingFunction,
+            ChromaCloudQwenEmbeddingModel,
+        )
     except ImportError as exc:
         raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
@@ -196,7 +199,7 @@ def upsert_statute_sections(
             pass
 
     dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model="qwen3-embedding-0.6b",
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
         task="text_matching",
     )
     collection = client.get_or_create_collection(
@@ -204,11 +207,15 @@ def upsert_statute_sections(
         embedding_function=dense_ef,
     )
 
-    collection.upsert(
-        ids=[section.id for section in sections],
-        documents=[build_statute_embedding_text(section) for section in sections],
-        metadatas=[_metadata_for_section(section) for section in sections],
-    )
+    _BATCH = 50
+    for i in range(0, len(sections), _BATCH):
+        batch = sections[i : i + _BATCH]
+        collection.upsert(
+            ids=[s.id for s in batch],
+            documents=[build_statute_embedding_text(s) for s in batch],
+            metadatas=[_metadata_for_section(s) for s in batch],
+        )
+        logger.info("Upserted batch %d/%d (%d sections)", i // _BATCH + 1, -(-len(sections) // _BATCH), len(batch))
     return len(sections)
 
 
@@ -219,7 +226,10 @@ def search_indian_statutes(
     """Search Indian statute sections by semantic similarity."""
     try:
         import chromadb
-        from chromadb.utils.embedding_functions import ChromaCloudQwenEmbeddingFunction
+        from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
+            ChromaCloudQwenEmbeddingFunction,
+            ChromaCloudQwenEmbeddingModel,
+        )
     except ImportError as exc:
         raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
@@ -232,7 +242,7 @@ def search_indian_statutes(
         headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
     )
     dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model="qwen3-embedding-0.6b",
+        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
         task="text_matching",
     )
     collection = client.get_or_create_collection(
