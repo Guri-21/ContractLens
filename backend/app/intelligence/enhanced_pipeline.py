@@ -265,18 +265,8 @@ def _generate_insights_summary(
     current contract with similar clauses from past contracts.
     """
     try:
-        import anthropic
-
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set — skipping insights summary")
-            return None
-
-        client = anthropic.Anthropic(api_key=api_key)
-
-        # Build a compact summary of retrieval results
         retrieval_summary = []
-        for r in retrieval_results[:5]:  # cap at 5 for token budget
+        for r in retrieval_results[:5]:
             for sc in r.similar_clauses[:2]:
                 retrieval_summary.append({
                     "current_clause": r.query_text[:100],
@@ -288,24 +278,18 @@ def _generate_insights_summary(
         if not retrieval_summary:
             return None
 
-        prompt = f"""You are a contract intelligence system. Based on cross-contract analysis:
-
-Current contract has {len(clauses)} clauses and {len(findings)} risk findings.
-
-Similar clauses found in past contracts:
-{json.dumps(retrieval_summary, indent=2)}
-
-Write 2-3 sentences highlighting:
-1. Any patterns seen across contracts (e.g. "This payment clause is similar to 3 past contracts")
-2. Whether the current risks are common or unusual compared to past analyses
-Be specific and factual. Do not fabricate data."""
-
-        resp = client.messages.create(
-            model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514"),
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}],
+        prompt = (
+            f"You are a contract intelligence system. Current contract has "
+            f"{len(clauses)} clauses and {len(findings)} risk findings.\n\n"
+            f"Similar clauses found in past contracts:\n"
+            f"{json.dumps(retrieval_summary, indent=2)}\n\n"
+            "Write 2-3 sentences highlighting patterns seen across contracts "
+            "and whether the current risks are common or unusual. "
+            "Be specific and factual. Do not fabricate data."
         )
-        return resp.content[0].text.strip()
+
+        from pipeline.llm_client import complete_text
+        return complete_text(prompt, max_tokens=300)
 
     except Exception as e:
         logger.warning("Insights summary generation failed: %s", e)

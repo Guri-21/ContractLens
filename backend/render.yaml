@@ -20,6 +20,8 @@ services:
         value: "true"
       - key: LLM_REDACTION
         value: "true"
+      - key: CLASSIFY_OTHER_WITH_LLM
+        value: "true"
       - key: PYTHON_VERSION
         value: "3.11"
       - key: CHROMA_API_KEY

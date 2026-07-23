@@ -142,7 +142,6 @@ def build_statute_embedding_text(section: StatuteSection) -> str:
 
 def ingest_indian_law_pdfs(
     laws_dir: Path,
-    persist_dir: str = _CHROMA_DIR,
 ) -> dict[str, Any]:
     """
     Extract all Indian law PDFs in `laws_dir` and upsert them into ChromaDB.
@@ -158,7 +157,6 @@ def ingest_indian_law_pdfs(
 
     stored = upsert_statute_sections(
         sections,
-        persist_dir=persist_dir,
         replace_collection=True,
     )
     return {
@@ -166,13 +164,11 @@ def ingest_indian_law_pdfs(
         "section_count": len(sections),
         "stored_count": stored,
         "collection": _INDIAN_STATUTES_COLLECTION,
-        "persist_dir": persist_dir,
     }
 
 
 def upsert_statute_sections(
     sections: list[StatuteSection],
-    persist_dir: str = _CHROMA_DIR,
     replace_collection: bool = False,
 ) -> int:
     """Upsert statute sections into the `indian_statutes` Chroma collection."""
@@ -222,7 +218,6 @@ def upsert_statute_sections(
 def search_indian_statutes(
     query: str,
     top_k: int = 5,
-    persist_dir: str = _CHROMA_DIR,
 ) -> list[dict[str, Any]]:
     """Search Indian statute sections by semantic similarity."""
     try:
