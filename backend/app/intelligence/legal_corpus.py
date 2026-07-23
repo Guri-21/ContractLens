@@ -209,7 +209,7 @@ def upsert_statute_sections(
     try:
         with conn.cursor() as cur:
             if replace_collection:
-                cur.execute("DELETE FROM statute_sections")
+                cur.execute("DELETE FROM vectors.statute_sections")
                 conn.commit()
                 logger.info("Cleared existing statute_sections rows")
 
@@ -237,7 +237,7 @@ def upsert_statute_sections(
                 ]
                 cur.executemany(
                     """
-                    INSERT INTO statute_sections
+                    INSERT INTO vectors.statute_sections
                         (id, act_name, section_number, section_title, chapter,
                          text, source_pdf, page_number, jurisdiction, law_type,
                          citation, embedding)
@@ -283,7 +283,7 @@ def search_indian_statutes(
                        source_pdf, page_number, jurisdiction, law_type, citation,
                        text,
                        1 - (embedding <=> %s::vector) AS similarity_score
-                FROM statute_sections
+                FROM vectors.statute_sections
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,

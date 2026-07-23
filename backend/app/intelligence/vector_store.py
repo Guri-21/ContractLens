@@ -19,7 +19,7 @@ from .embeddings import EmbeddedClause, build_embedding_text
 
 logger = logging.getLogger(__name__)
 
-_TABLE = "contract_clauses"
+_TABLE = "vectors.contract_clauses"
 _store_instance: Optional["VectorStore"] = None
 
 

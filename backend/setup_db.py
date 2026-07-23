@@ -17,7 +17,10 @@ import psycopg2  # type: ignore[import]
 SQL = """
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS statute_sections (
+-- Use 'vectors' schema so Prisma (which owns 'public') never drops these tables.
+CREATE SCHEMA IF NOT EXISTS vectors;
+
+CREATE TABLE IF NOT EXISTS vectors.statute_sections (
     id             TEXT PRIMARY KEY,
     act_name       TEXT NOT NULL,
     section_number TEXT NOT NULL,
@@ -33,10 +36,10 @@ CREATE TABLE IF NOT EXISTS statute_sections (
 );
 
 CREATE INDEX IF NOT EXISTS statute_sections_embedding_idx
-    ON statute_sections USING ivfflat (embedding vector_cosine_ops)
+    ON vectors.statute_sections USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 50);
 
-CREATE TABLE IF NOT EXISTS contract_clauses (
+CREATE TABLE IF NOT EXISTS vectors.contract_clauses (
     embedding_id   TEXT PRIMARY KEY,
     clause_id      TEXT NOT NULL,
     document_id    TEXT NOT NULL,
@@ -49,7 +52,7 @@ CREATE TABLE IF NOT EXISTS contract_clauses (
 );
 
 CREATE INDEX IF NOT EXISTS contract_clauses_embedding_idx
-    ON contract_clauses USING ivfflat (embedding vector_cosine_ops)
+    ON vectors.contract_clauses USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 50);
 """
 
