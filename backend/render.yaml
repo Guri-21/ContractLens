@@ -3,8 +3,8 @@ services:
     name: contractlens-api
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma py fetch && prisma db push --accept-data-loss && python setup_db.py
-    startCommand: prisma py fetch && uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r requirements-prod.txt && prisma generate && prisma py fetch && python fetch_query_engine.py && prisma db push --accept-data-loss && python setup_db.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false          # Supabase Transaction pooler URL (port 6543)
