@@ -72,13 +72,10 @@ def encrypt_at_rest(path: str) -> None:
 
 
 def open_plaintext(path: str) -> tuple[str, bool]:
-    """Return (usable_path, is_temp). Handles Supabase cloud paths, encrypted
-    local files, and plaintext local files. Caller MUST call cleanup_temp()
-    on any path returned with is_temp=True."""
-    from app.core.file_storage import is_supabase_path, open_for_reading
-    if is_supabase_path(path):
-        return open_for_reading(path)
-
+    """Return (usable_path, is_temp). If the file is encrypted, decrypt it to a
+    permission-restricted temp file and return that path with is_temp=True. The
+    caller MUST call cleanup_temp(path) when done. Plaintext files are returned
+    as-is (is_temp=False)."""
     fernet = _get_fernet()
     with open(path, "rb") as f:
         head = f.read(len(_FERNET_PREFIX))

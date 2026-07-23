@@ -11,8 +11,6 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.limiter import limiter
-from app.core.storage import encrypt_at_rest
-from app.core.file_storage import upload_file, delete_file
 from app.document_workflow import validate_reviewer_upload_type
 
 logger = logging.getLogger(__name__)
@@ -194,7 +192,6 @@ async def upload_document(
         raise HTTPException(status_code=413, detail=f"File too large. Maximum allowed size is {MAX_UPLOAD_BYTES // (1024*1024)} MB.")
     _validate_magic_bytes(contents, safe_name)
 
-    # Write to a temp local path for malware scan + structural validation.
     import tempfile
     fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(safe_name)[1])
     try:
@@ -206,15 +203,13 @@ async def upload_document(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-    # Persist to Supabase Storage (or local disk if not configured).
-    file_path = upload_file(contents, safe_name)
-
     doc = await db.document.create(
         data={
             "name": safe_name,
             "document_type": document_type,
             "status": "pending",
-            "file_path": file_path,
+            "file_path": safe_name,
+            "file_content": contents,
             "uploaded_by_id": current_user.id
         }
     )
@@ -268,14 +263,13 @@ async def admin_upload_document(
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-    file_path = upload_file(contents, safe_name)
-
     doc = await db.document.create(
         data={
             "name": safe_name,
             "document_type": ADMIN_UPLOAD_DOCUMENT_TYPE,
             "status": "pending",
-            "file_path": file_path,
+            "file_path": safe_name,
+            "file_content": contents,
             "uploaded_by_id": current_user.id,
             "assigned_to_id": assigned_to_id
         }
@@ -340,8 +334,6 @@ async def delete_document(
     await db.riskfinding.delete_many(where={"clause": {"is": {"document_id": document_id}}})
     await db.clause.delete_many(where={"document_id": document_id})
     await db.document.delete(where={"id": document_id})
-
-    delete_file(doc.file_path)
             
     await db.auditlog.create(
         data={

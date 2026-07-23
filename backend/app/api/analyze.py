@@ -83,7 +83,8 @@ async def analyze_documents(
     ]
     unique_requested_ids = list(dict.fromkeys(requested_ids))
     docs = await db.document.find_many(
-        where=_document_access_filter(current_user, unique_requested_ids)
+        where=_document_access_filter(current_user, unique_requested_ids),
+        include={"clauses": False},
     )
     documents_by_id = {document.id: document for document in docs}
     try:
@@ -97,6 +98,7 @@ async def analyze_documents(
             "name": doc.name,
             "type": doc.document_type,
             "file_path": doc.file_path,
+            "_file_content": doc.file_content,
         }
         for doc in package_documents
     ]
@@ -116,14 +118,30 @@ async def analyze_documents(
         }
     )
 
-    # Decrypt any at-rest-encrypted documents to short-lived temp files that
-    # exist only for the duration of the pipeline run.
+    # Write file bytes to short-lived temp files for the pipeline.
+    # Content is stored in Neon (file_content column); file_path is just a name.
+    import tempfile, os as _os
     temp_paths: list[str] = []
     for doc in doc_dicts:
-        usable_path, is_temp = open_plaintext(doc["file_path"])
-        doc["file_path"] = usable_path
-        if is_temp:
-            temp_paths.append(usable_path)
+        content: bytes | None = doc.pop("_file_content", None)
+        if content:
+            suffix = _os.path.splitext(doc["file_path"])[1] or ".pdf"
+            fd, tmp = tempfile.mkstemp(suffix=suffix)
+            try:
+                with _os.fdopen(fd, "wb") as f:
+                    f.write(content)
+            except Exception:
+                _os.remove(tmp)
+                raise
+            doc["file_path"] = tmp
+            temp_paths.append(tmp)
+        else:
+            # Fallback for documents uploaded before this migration (local path)
+            doc.pop("_file_content", None)
+            usable_path, is_temp = open_plaintext(doc["file_path"])
+            doc["file_path"] = usable_path
+            if is_temp:
+                temp_paths.append(usable_path)
 
     # Phase 1: run the pipeline (with timeout)
     try:

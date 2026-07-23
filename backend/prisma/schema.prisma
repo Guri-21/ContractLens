@@ -31,7 +31,8 @@ model Document {
   name                   String
   document_type          String
   status                 String
-  file_path              String
+  file_path              String                   // kept as filename reference
+  file_content           Bytes?                   // actual bytes stored in Neon
   uploaded_by_id         String
   uploader               User                     @relation("UploadedDocuments", fields: [uploaded_by_id], references: [id])
   assigned_to_id         String?
