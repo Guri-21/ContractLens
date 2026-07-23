@@ -140,11 +140,37 @@ def build_statute_embedding_text(section: StatuteSection) -> str:
     ).strip()
 
 
+def _pgvector_conn():
+    """Return a psycopg2 connection.
+
+    For ingest (long-running): uses Session pooler (port 5432) derived from
+    DATABASE_URL by swapping the port — avoids PgBouncer transaction-mode timeout
+    while still resolving over normal networks (unlike the direct db.*.supabase.co host).
+    For search queries the transaction pooler (DATABASE_URL as-is) is fine.
+    """
+    import psycopg2  # type: ignore[import]
+
+    url = os.getenv("DATABASE_URL", "")
+    if not url:
+        raise RuntimeError("DATABASE_URL env var is not set")
+    # Swap transaction pooler port 6543 → session pooler port 5432
+    url = url.replace(":6543/", ":5432/")
+    if "sslmode" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}sslmode=require"
+    return psycopg2.connect(url)
+
+
+def _vec_literal(embedding: list[float]) -> str:
+    """Convert a Python float list to a PostgreSQL vector literal string."""
+    return "[" + ",".join(f"{v:.8f}" for v in embedding) + "]"
+
+
 def ingest_indian_law_pdfs(
     laws_dir: Path,
 ) -> dict[str, Any]:
     """
-    Extract all Indian law PDFs in `laws_dir` and upsert them into ChromaDB.
+    Extract all Indian law PDFs in `laws_dir` and upsert them into Supabase pgvector.
 
     Returns a small summary suitable for CLI output and tests.
     """
@@ -155,10 +181,7 @@ def ingest_indian_law_pdfs(
         logger.info("Extracted %d sections from %s", len(extracted), pdf.name)
         sections.extend(extracted)
 
-    stored = upsert_statute_sections(
-        sections,
-        replace_collection=True,
-    )
+    stored = upsert_statute_sections(sections, replace_collection=True)
     return {
         "pdf_count": len(pdfs),
         "section_count": len(sections),
@@ -171,51 +194,74 @@ def upsert_statute_sections(
     sections: list[StatuteSection],
     replace_collection: bool = False,
 ) -> int:
-    """Upsert statute sections into the `indian_statutes` Chroma collection."""
+    """Upsert statute sections with Jina embeddings into Supabase pgvector."""
     if not sections:
         return 0
 
+    from .jina_embeddings import embed_texts
+
+    texts = [build_statute_embedding_text(s) for s in sections]
+    logger.info("Generating Jina embeddings for %d sections…", len(sections))
+    embeddings = embed_texts(texts)
+
+    conn = _pgvector_conn()
+    conn.autocommit = False
     try:
-        import chromadb
-        from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
-            ChromaCloudQwenEmbeddingFunction,
-            ChromaCloudQwenEmbeddingModel,
-        )
-    except ImportError as exc:
-        raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
+        with conn.cursor() as cur:
+            if replace_collection:
+                cur.execute("DELETE FROM statute_sections")
+                conn.commit()
+                logger.info("Cleared existing statute_sections rows")
 
-    client = chromadb.HttpClient(
-        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
-        port=443,
-        ssl=True,
-        tenant=os.getenv("CHROMA_TENANT", ""),
-        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
-        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
-    )
-    if replace_collection:
-        try:
-            client.delete_collection(_INDIAN_STATUTES_COLLECTION)
-        except Exception:
-            pass
+            _BATCH = 100
+            total_batches = -(-len(sections) // _BATCH)
+            for i in range(0, len(sections), _BATCH):
+                batch_s = sections[i : i + _BATCH]
+                batch_e = embeddings[i : i + _BATCH]
+                rows = [
+                    (
+                        s.id,
+                        s.act_name,
+                        s.section_number,
+                        s.section_title,
+                        s.chapter,
+                        s.text,
+                        s.source_pdf,
+                        s.page_number,
+                        s.jurisdiction,
+                        s.law_type,
+                        _citation_for_section(s),
+                        _vec_literal(e),
+                    )
+                    for s, e in zip(batch_s, batch_e)
+                ]
+                cur.executemany(
+                    """
+                    INSERT INTO statute_sections
+                        (id, act_name, section_number, section_title, chapter,
+                         text, source_pdf, page_number, jurisdiction, law_type,
+                         citation, embedding)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                    ON CONFLICT (id) DO UPDATE SET
+                        text      = EXCLUDED.text,
+                        embedding = EXCLUDED.embedding,
+                        citation  = EXCLUDED.citation
+                    """,
+                    rows,
+                )
+                conn.commit()  # commit each batch — avoids long transaction timeout
+                logger.info(
+                    "Upserted batch %d/%d (%d sections)",
+                    i // _BATCH + 1,
+                    total_batches,
+                    len(batch_s),
+                )
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
-    dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
-        task="text_matching",
-    )
-    collection = client.get_or_create_collection(
-        name=_INDIAN_STATUTES_COLLECTION,
-        embedding_function=dense_ef,
-    )
-
-    _BATCH = 50
-    for i in range(0, len(sections), _BATCH):
-        batch = sections[i : i + _BATCH]
-        collection.upsert(
-            ids=[s.id for s in batch],
-            documents=[build_statute_embedding_text(s) for s in batch],
-            metadatas=[_metadata_for_section(s) for s in batch],
-        )
-        logger.info("Upserted batch %d/%d (%d sections)", i // _BATCH + 1, -(-len(sections) // _BATCH), len(batch))
     return len(sections)
 
 
@@ -223,50 +269,48 @@ def search_indian_statutes(
     query: str,
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    """Search Indian statute sections by semantic similarity."""
+    """Search Indian statute sections by semantic similarity using pgvector."""
+    from .jina_embeddings import embed_one
+
+    query_vec = embed_one(query)
+
+    conn = _pgvector_conn()
     try:
-        import chromadb
-        from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
-            ChromaCloudQwenEmbeddingFunction,
-            ChromaCloudQwenEmbeddingModel,
-        )
-    except ImportError as exc:
-        raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, act_name, section_number, section_title, chapter,
+                       source_pdf, page_number, jurisdiction, law_type, citation,
+                       text,
+                       1 - (embedding <=> %s::vector) AS similarity_score
+                FROM statute_sections
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (_vec_literal(query_vec), _vec_literal(query_vec), top_k),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
 
-    client = chromadb.HttpClient(
-        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
-        port=443,
-        ssl=True,
-        tenant=os.getenv("CHROMA_TENANT", ""),
-        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
-        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
-    )
-    dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
-        task="text_matching",
-    )
-    collection = client.get_or_create_collection(
-        name=_INDIAN_STATUTES_COLLECTION,
-        embedding_function=dense_ef,
-    )
-    if collection.count() == 0:
-        return []
-
-    results = collection.query(
-        query_texts=[query],
-        n_results=min(top_k, collection.count()),
-    )
     matches: list[dict[str, Any]] = []
-    for index, item_id in enumerate(results.get("ids", [[]])[0]):
-        metadata = results.get("metadatas", [[]])[0][index]
-        distance = results.get("distances", [[]])[0][index]
-        matches.append(
-            {
-                "id": item_id,
-                "similarity_score": round(max(0.0, 1.0 - distance), 4),
-                **metadata,
-            }
-        )
+    for row in rows:
+        (rid, act_name, sec_num, sec_title, chapter, src_pdf,
+         page_num, jurisdiction, law_type, citation, text, score) = row
+        matches.append({
+            "id": rid,
+            "act_name": act_name,
+            "section_number": sec_num,
+            "section_title": sec_title,
+            "chapter": chapter,
+            "source_pdf": src_pdf,
+            "page_number": page_num,
+            "jurisdiction": jurisdiction,
+            "law_type": law_type,
+            "citation": citation,
+            "text": text[:_MAX_DISPLAY_CHARS],
+            "similarity_score": round(float(score), 4),
+        })
     return matches
 
 

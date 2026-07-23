@@ -1,15 +1,12 @@
 """
-Intelligence Layer — ChromaDB Vector Store (Chroma Cloud).
+Intelligence Layer — pgvector Vector Store (Supabase).
 
-Uses hybrid search: Qwen dense embeddings + Splade sparse embeddings
-fused via Reciprocal Rank Fusion. All embedding is server-side on
-Chroma Cloud — zero local ML compute.
+Uses Jina AI embeddings (1024-dim) stored in Supabase PostgreSQL with the
+pgvector extension. Cosine similarity search via the <=> operator.
 
 Required env vars:
-    CHROMA_API_KEY   — from Chroma Cloud dashboard
-    CHROMA_TENANT    — your tenant UUID
-    CHROMA_DATABASE  — database name (default: Contract_Lens)
-    CHROMA_HOST      — (default: api.trychroma.com)
+    DATABASE_URL  — Supabase transaction pooler URL (port 6543)
+    JINA_API_KEY  — free key from jina.ai
 """
 
 from __future__ import annotations
@@ -22,68 +19,33 @@ from .embeddings import EmbeddedClause, build_embedding_text
 
 logger = logging.getLogger(__name__)
 
-_COLLECTION_NAME = "contract_clauses"
+_TABLE = "contract_clauses"
 _store_instance: Optional["VectorStore"] = None
 
 
-def _cloud_client():
-    import chromadb
-    return chromadb.HttpClient(
-        host=os.getenv("CHROMA_HOST", "api.trychroma.com"),
-        port=443,
-        ssl=True,
-        tenant=os.getenv("CHROMA_TENANT", ""),
-        database=os.getenv("CHROMA_DATABASE", "Contract_Lens"),
-        headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
-    )
+def _get_conn():
+    import psycopg2  # type: ignore[import]
+
+    url = os.getenv("DATABASE_URL", "")
+    if not url:
+        raise RuntimeError("DATABASE_URL env var is not set")
+    if "sslmode" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}sslmode=require"
+    return psycopg2.connect(url)
 
 
-def _make_embedding_functions():
-    from chromadb.utils.embedding_functions.chroma_cloud_qwen_embedding_function import (
-        ChromaCloudQwenEmbeddingFunction,
-        ChromaCloudQwenEmbeddingModel,
-    )
-    from chromadb.utils.embedding_functions import ChromaCloudSpladeEmbeddingFunction
-    dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
-        task="text_matching",
-    )
-    sparse_ef = ChromaCloudSpladeEmbeddingFunction()
-    return dense_ef, sparse_ef
+def _vec_literal(embedding: list[float]) -> str:
+    return "[" + ",".join(f"{v:.8f}" for v in embedding) + "]"
 
 
 class VectorStore:
     """
-    Chroma Cloud wrapper with hybrid dense+sparse search.
+    pgvector-backed clause store using Supabase PostgreSQL.
 
-    Collections are persistent in Chroma Cloud — survives Render restarts.
+    Embeddings are generated via Jina AI REST API and stored as
+    vector(1024) columns. Persists across Render restarts (DB is external).
     """
-
-    def __init__(self) -> None:
-        try:
-            from chromadb import Schema, SparseVectorIndexConfig, K
-        except ImportError:
-            raise ImportError("chromadb is required: pip install 'chromadb[httpx]'")
-
-        self._client = _cloud_client()
-        dense_ef, sparse_ef = _make_embedding_functions()
-        self._dense_ef = dense_ef
-
-        schema = Schema()
-        schema.create_index(
-            config=SparseVectorIndexConfig(
-                source_key=K.DOCUMENT,
-                embedding_function=sparse_ef,
-            ),
-            key="sparse_embedding",
-        )
-
-        self._collection = self._client.get_or_create_collection(
-            name=_COLLECTION_NAME,
-            embedding_function=dense_ef,
-            schema=schema,
-        )
-        logger.info("Chroma Cloud ready — collection '%s'", _COLLECTION_NAME)
 
     # ── Write ────────────────────────────────────────────────────
 
@@ -91,23 +53,46 @@ class VectorStore:
         if not clauses:
             return 0
 
-        ids, documents, metadatas = [], [], []
-        for clause in clauses:
-            ids.append(clause.embedding_id)
-            documents.append(build_embedding_text(clause))
-            metadatas.append({
-                "clause_id": clause.clause_id,
-                "document_id": clause.document_id,
-                "document_name": clause.document_name,
-                "document_type": clause.document_type,
-                "clause_type": clause.clause_type or "unknown",
-                "section_number": clause.section_number or "",
-                "text": clause.text[:500],
-            })
+        from .jina_embeddings import embed_texts
 
-        self._collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
-        logger.info("Upserted %d clauses to Chroma Cloud", len(ids))
-        return len(ids)
+        texts = [build_embedding_text(c) for c in clauses]
+        embeddings = embed_texts(texts)
+
+        conn = _get_conn()
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    rows = [
+                        (
+                            c.embedding_id,
+                            c.clause_id,
+                            c.document_id,
+                            c.document_name,
+                            c.document_type,
+                            c.clause_type or "unknown",
+                            c.section_number or "",
+                            c.text[:500],
+                            _vec_literal(e),
+                        )
+                        for c, e in zip(clauses, embeddings)
+                    ]
+                    cur.executemany(
+                        f"""
+                        INSERT INTO {_TABLE}
+                            (embedding_id, clause_id, document_id, document_name,
+                             document_type, clause_type, section_number, text, embedding)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                        ON CONFLICT (embedding_id) DO UPDATE SET
+                            text      = EXCLUDED.text,
+                            embedding = EXCLUDED.embedding
+                        """,
+                        rows,
+                    )
+            logger.info("Upserted %d clauses to pgvector", len(clauses))
+        finally:
+            conn.close()
+
+        return len(clauses)
 
     # ── Read ─────────────────────────────────────────────────────
 
@@ -118,62 +103,81 @@ class VectorStore:
         where_filter: Optional[dict[str, Any]] = None,
         exclude_document_id: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        combined_filter: dict[str, Any] = {}
-        if exclude_document_id and where_filter:
-            combined_filter = {"$and": [{"document_id": {"$ne": exclude_document_id}}, where_filter]}
-        elif exclude_document_id:
-            combined_filter = {"document_id": {"$ne": exclude_document_id}}
-        elif where_filter:
-            combined_filter = where_filter
+        from .jina_embeddings import embed_one
 
+        query_vec = embed_one(query_text)
+        vec_str = _vec_literal(query_vec)
+
+        # Build optional WHERE clause
+        conditions: list[str] = []
+        params: list[Any] = [vec_str, vec_str]
+        if exclude_document_id:
+            conditions.append("document_id != %s")
+            params.append(exclude_document_id)
+        # where_filter keys map directly to column names for simple equality
+        if where_filter:
+            for col, val in where_filter.items():
+                conditions.append(f"{col} = %s")
+                params.append(val)
+        params.append(n_results)
+
+        where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        conn = _get_conn()
         try:
-            from chromadb import Search, Knn, Rrf
-            hybrid = Search(
-                query=Rrf(
-                    ranks=[
-                        Knn(query=query_text, return_rank=True),
-                        Knn(query=query_text, key="sparse_embedding", return_rank=True),
-                    ],
-                    weights=[0.7, 0.3],
-                    k=60,
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT clause_id, document_id, document_name, document_type,
+                           clause_type, section_number, text,
+                           1 - (embedding <=> %s::vector) AS similarity_score
+                    FROM {_TABLE}
+                    {where_sql}
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    params,
                 )
-            )
-            query_kwargs: dict[str, Any] = {"query": hybrid, "n_results": n_results}
-            if combined_filter:
-                query_kwargs["where"] = combined_filter
-            results = self._collection.query(**query_kwargs)
-        except Exception as exc:
-            logger.warning("Hybrid search failed (%s) — falling back to dense-only", exc)
-            query_kwargs = {"query_texts": [query_text], "n_results": n_results}
-            if combined_filter:
-                query_kwargs["where"] = combined_filter
-            results = self._collection.query(**query_kwargs)
+                rows = cur.fetchall()
+        finally:
+            conn.close()
 
         matches: list[dict[str, Any]] = []
-        ids = (results.get("ids") or [[]])[0]
-        for i, _id in enumerate(ids):
-            meta = ((results.get("metadatas") or [[]])[0] or [{}])[i]
-            distance = ((results.get("distances") or [[1.0]])[0] or [1.0])[i]
+        for row in rows:
+            (clause_id, document_id, document_name, document_type,
+             clause_type, section_number, text, score) = row
             matches.append({
-                "clause_id": meta.get("clause_id", ""),
-                "document_id": meta.get("document_id", ""),
-                "document_name": meta.get("document_name", ""),
-                "document_type": meta.get("document_type", ""),
-                "clause_type": meta.get("clause_type", ""),
-                "section_number": meta.get("section_number", ""),
-                "text": meta.get("text", ""),
-                "similarity_score": round(max(0.0, 1.0 - float(distance)), 4),
+                "clause_id": clause_id,
+                "document_id": document_id,
+                "document_name": document_name,
+                "document_type": document_type,
+                "clause_type": clause_type,
+                "section_number": section_number,
+                "text": text,
+                "similarity_score": round(float(score), 4),
             })
         return matches
 
     # ── Management ───────────────────────────────────────────────
 
     def count(self) -> int:
-        return self._collection.count()
+        conn = _get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT COUNT(*) FROM {_TABLE}")
+                return cur.fetchone()[0]
+        finally:
+            conn.close()
 
     def delete_collection(self) -> None:
-        self._client.delete_collection(_COLLECTION_NAME)
-        logger.warning("Chroma Cloud collection '%s' deleted", _COLLECTION_NAME)
+        conn = _get_conn()
+        try:
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"DELETE FROM {_TABLE}")
+        finally:
+            conn.close()
+        logger.warning("pgvector table '%s' cleared", _TABLE)
 
 
 def get_store() -> VectorStore:
