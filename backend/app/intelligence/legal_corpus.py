@@ -177,10 +177,7 @@ def upsert_statute_sections(
 
     try:
         import chromadb
-        from chromadb.utils.embedding_functions import (
-            ChromaCloudQwenEmbeddingFunction,
-            ChromaCloudQwenEmbeddingModel,
-        )
+        from chromadb.utils.embedding_functions import ChromaCloudQwenEmbeddingFunction
     except ImportError as exc:
         raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
@@ -199,7 +196,7 @@ def upsert_statute_sections(
             pass
 
     dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
+        model="qwen3-embedding-0.6b",
         task="text_matching",
     )
     collection = client.get_or_create_collection(
@@ -222,10 +219,7 @@ def search_indian_statutes(
     """Search Indian statute sections by semantic similarity."""
     try:
         import chromadb
-        from chromadb.utils.embedding_functions import (
-            ChromaCloudQwenEmbeddingFunction,
-            ChromaCloudQwenEmbeddingModel,
-        )
+        from chromadb.utils.embedding_functions import ChromaCloudQwenEmbeddingFunction
     except ImportError as exc:
         raise ImportError("chromadb is required: pip install 'chromadb[httpx]'") from exc
 
@@ -238,7 +232,7 @@ def search_indian_statutes(
         headers={"x-chroma-token": os.getenv("CHROMA_API_KEY", "")},
     )
     dense_ef = ChromaCloudQwenEmbeddingFunction(
-        model=ChromaCloudQwenEmbeddingModel.QWEN3_EMBEDDING_0p6B,
+        model="qwen3-embedding-0.6b",
         task="text_matching",
     )
     collection = client.get_or_create_collection(
